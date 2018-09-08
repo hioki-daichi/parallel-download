@@ -1,21 +1,23 @@
 package downloader
 
 import (
-	"bytes"
+	"io/ioutil"
+	"os"
 	"testing"
 )
 
-func TestDownloader_Download(t *testing.T) {
+func TestDownloader_Download_IsFileExist(t *testing.T) {
 	t.Parallel()
 
-	url := "https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.18.6.tar.xz"
-	expected := "Downloaded: \"" + url + "\"\n"
+	_, err := os.Create("foo.txt")
+	if err != nil {
+		t.Fatalf("err %s", err)
+	}
+	defer os.Remove("foo.txt")
 
-	var buf bytes.Buffer
-	d := NewDownloader(&buf, url)
-	d.Download()
-
-	actual := buf.String()
+	d := NewDownloader(ioutil.Discard, "https://example.com/foo.txt")
+	actual := d.Download()
+	expected := errExist
 	if actual != expected {
 		t.Errorf(`expected="%s" actual="%s"`, expected, actual)
 	}
