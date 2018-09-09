@@ -9,6 +9,7 @@ import (
 	"path"
 
 	"github.com/hioki-daichi/parallel-download/bytesranger"
+	"golang.org/x/sync/errgroup"
 )
 
 var errExist = errors.New("downloader: file already exists")
@@ -42,34 +43,24 @@ func (d *Downloader) Download() error {
 		return err
 	}
 
-	ch := make(chan map[int]*http.Response)
+	responses := map[int]*http.Response{}
 
-	// send to channels...
+	eg := errgroup.Group{}
 	for i, bytesrangeString := range bytesrangeStrings {
 		i := i
 		bytesrangeString := bytesrangeString
-		go func() {
+		eg.Go(func() error {
 			resp, err := d.getHTTPResponseWithinRange(bytesrangeString)
 			if err != nil {
-				panic(err) // TODO: error handling
+				return err
 			}
-
-			fmt.Fprintf(d.OutStream, "ch snd [i: %d, ContentLength: %d, Range: %s]\n", i, resp.ContentLength, bytesrangeString)
-
-			ch <- map[int]*http.Response{i: resp}
-		}()
-	}
-
-	// receive channels...
-	responses := make(map[int]*http.Response, 0)
-	for i := 0; i < len(bytesrangeStrings); i++ {
-		m := <-ch
-
-		for i, resp := range m {
-			fmt.Fprintf(d.OutStream, "ch rcv [i: %d, ContentLength: %d]\n", i, resp.ContentLength)
-
+			fmt.Fprintf(d.OutStream, "i: %d, ContentLength: %d, Range: %s\n", i, resp.ContentLength, bytesrangeString)
 			responses[i] = resp
-		}
+			return nil
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return err
 	}
 
 	fp, err := os.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
@@ -77,7 +68,6 @@ func (d *Downloader) Download() error {
 		return err
 	}
 
-	// concat responses...
 	for i := 0; i < len(responses); i++ {
 		resp := responses[i]
 		_, err := io.Copy(fp, resp.Body)
