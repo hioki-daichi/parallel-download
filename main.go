@@ -83,6 +83,9 @@ func (d *downloader) download() error {
 				return err
 			}
 			fmt.Fprintf(d.outStream, "i: %d, ContentLength: %d, Range: %s\n", i, resp.ContentLength, rangeString)
+			if resp.StatusCode != http.StatusOK {
+				return errors.New("unexpected response: status code: " + strconv.Itoa(resp.StatusCode))
+			}
 			responses[i] = resp
 			return nil
 		})
