@@ -6,8 +6,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
+	"strconv"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -35,8 +37,17 @@ func newDownloader(w io.Writer, url string) *downloader {
 }
 
 func (d *downloader) download() error {
-	_, filename := path.Split(d.url)
-	_, err := os.Stat(filename)
+	u, err := url.Parse(d.url)
+	if err != nil {
+		return err
+	}
+	_, filename := path.Split(u.Path)
+
+	if filename == "" {
+		filename = "index.html"
+	}
+
+	_, err = os.Stat(filename)
 	if !os.IsNotExist(err) {
 		return errExist
 	}
