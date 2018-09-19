@@ -108,7 +108,7 @@ func (d *downloader) download() error {
 		}
 	}
 
-	fmt.Fprintf(d.outStream, "Downloaded: %q\n", d.url)
+	fmt.Fprintf(d.outStream, "%q saved\n", filename)
 
 	return nil
 }
