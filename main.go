@@ -46,19 +46,9 @@ func newDownloader(w io.Writer, url string, opts *options) *downloader {
 }
 
 func (d *downloader) download() error {
-	u, err := url.Parse(d.url)
+	filename, err := d.genFilename()
 	if err != nil {
 		return err
-	}
-	_, filename := path.Split(u.Path)
-
-	if filename == "" {
-		filename = "index.html"
-	}
-
-	_, err = os.Stat(filename)
-	if !os.IsNotExist(err) {
-		return errExist
 	}
 
 	resp, err := http.Head(d.url)
@@ -120,6 +110,25 @@ func (d *downloader) download() error {
 	fmt.Fprintf(d.outStream, "%q saved\n", filename)
 
 	return nil
+}
+
+func (d *downloader) genFilename() (string, error) {
+	u, err := url.Parse(d.url)
+	if err != nil {
+		return "", err
+	}
+	_, filename := path.Split(u.Path)
+
+	if filename == "" {
+		filename = "index.html"
+	}
+
+	_, err = os.Stat(filename)
+	if !os.IsNotExist(err) {
+		return "", errExist
+	}
+
+	return filename, nil
 }
 
 func toRangeStrings(contentLength int, parallelism int) ([]string, error) {
