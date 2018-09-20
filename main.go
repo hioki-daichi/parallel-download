@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"sync"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -20,16 +21,20 @@ var (
 )
 
 func main() {
-	flg := flag.NewFlagSet("parallel-download", flag.ExitOnError)
-	parallelism := flg.Int("p", 8, "parallelism")
-	output := flg.String("o", "", "output")
-	flg.Parse(os.Args[1:])
-	opts := &options{parallelism: *parallelism, output: *output}
-	url := flg.Arg(0)
+	opts, url := parse(os.Args[1:]...)
 	err := newDownloader(os.Stdout, url, opts).download()
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func parse(args ...string) (*options, string) {
+	flg := flag.NewFlagSet("parallel-download", flag.ExitOnError)
+	parallelism := flg.Int("p", 8, "parallelism")
+	output := flg.String("o", "", "output")
+	flg.Parse(args)
+	url := flg.Arg(0)
+	return &options{parallelism: *parallelism, output: *output}, url
 }
 
 type options struct {
@@ -66,6 +71,7 @@ func (d *downloader) download() error {
 
 	responses := map[int]*http.Response{}
 
+	var m sync.Mutex
 	eg := errgroup.Group{}
 	for i, rangeString := range rangeStrings {
 		i := i
@@ -88,7 +94,9 @@ func (d *downloader) download() error {
 			if resp.StatusCode != http.StatusOK {
 				return errors.New("unexpected response: status code: " + strconv.Itoa(resp.StatusCode))
 			}
+			m.Lock()
 			responses[i] = resp
+			m.Unlock()
 			return nil
 		})
 	}
