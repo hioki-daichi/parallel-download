@@ -22,8 +22,9 @@ var (
 func main() {
 	flg := flag.NewFlagSet("parallel-download", flag.ExitOnError)
 	parallelism := flg.Int("p", 8, "parallelism")
+	output := flg.String("o", "", "output")
 	flg.Parse(os.Args[1:])
-	opts := &options{parallelism: *parallelism}
+	opts := &options{parallelism: *parallelism, output: *output}
 	url := flg.Arg(0)
 	err := newDownloader(os.Stdout, url, opts).download()
 	if err != nil {
@@ -33,16 +34,18 @@ func main() {
 
 type options struct {
 	parallelism int
+	output      string
 }
 
 type downloader struct {
 	outStream   io.Writer
 	url         string
 	parallelism int
+	output      string
 }
 
 func newDownloader(w io.Writer, url string, opts *options) *downloader {
-	return &downloader{outStream: w, url: url, parallelism: opts.parallelism}
+	return &downloader{outStream: w, url: url, parallelism: opts.parallelism, output: opts.output}
 }
 
 func (d *downloader) download() error {
@@ -113,6 +116,10 @@ func (d *downloader) download() error {
 }
 
 func (d *downloader) genFilename() (string, error) {
+	if d.output != "" {
+		return d.output, nil
+	}
+
 	u, err := url.Parse(d.url)
 	if err != nil {
 		return "", err
