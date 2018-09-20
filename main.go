@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -19,11 +20,19 @@ var (
 )
 
 func main() {
-	url := os.Args[1]
-	err := newDownloader(os.Stdout, url).download()
+	flg := flag.NewFlagSet("parallel-download", flag.ExitOnError)
+	parallelism := flg.Int("p", 8, "parallelism")
+	flg.Parse(os.Args[1:])
+	opts := &options{parallelism: *parallelism}
+	url := flg.Arg(0)
+	err := newDownloader(os.Stdout, url, opts).download()
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+type options struct {
+	parallelism int
 }
 
 type downloader struct {
@@ -32,8 +41,8 @@ type downloader struct {
 	parallelism int
 }
 
-func newDownloader(w io.Writer, url string) *downloader {
-	return &downloader{outStream: w, url: url, parallelism: 8} // TODO: Use flags instead of hard-coded 8
+func newDownloader(w io.Writer, url string, opts *options) *downloader {
+	return &downloader{outStream: w, url: url, parallelism: opts.parallelism}
 }
 
 func (d *downloader) download() error {
