@@ -77,23 +77,11 @@ func (d *downloader) download() error {
 		i := i
 		rangeString := rangeString
 		eg.Go(func() error {
-			client := &http.Client{Timeout: 0}
-
-			req, err := http.NewRequest("GET", d.url, nil)
-			if err != nil {
-				return err
-			}
-
-			req.Header.Set("Range", rangeString)
-
-			resp, err := client.Do(req)
+			resp, err := d.doRangeRequest(rangeString)
 			if err != nil {
 				return err
 			}
 			fmt.Fprintf(d.outStream, "i: %d, ContentLength: %d, Range: %s\n", i, resp.ContentLength, rangeString)
-			if resp.StatusCode != http.StatusOK {
-				return errors.New("unexpected response: status code: " + strconv.Itoa(resp.StatusCode))
-			}
 			m.Lock()
 			responses[i] = resp
 			m.Unlock()
@@ -144,6 +132,28 @@ func (d *downloader) genFilename() (string, error) {
 	}
 
 	return filename, nil
+}
+
+func (d *downloader) doRangeRequest(rangeString string) (*http.Response, error) {
+	client := &http.Client{Timeout: 0}
+
+	req, err := http.NewRequest("GET", d.url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Range", rangeString)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("unexpected response: status code: " + strconv.Itoa(resp.StatusCode))
+	}
+
+	return resp, nil
 }
 
 func toRangeStrings(contentLength int, parallelism int) ([]string, error) {

@@ -109,6 +109,15 @@ func TestMain_genFilename_IsNotExist(t *testing.T) {
 	}
 }
 
+func TestMain_doRangeRequest_ParseError(t *testing.T) {
+	expected := `parse %: invalid URL escape "%"`
+	_, err := newDownloader(ioutil.Discard, "%", &options{parallelism: 8, output: ""}).doRangeRequest("bytes=0-99")
+	actual := err.Error()
+	if actual != expected {
+		t.Errorf(`unexpected : expected: "%s" actual: "%s"`, expected, actual)
+	}
+}
+
 func TestMain_toRangeStrings(t *testing.T) {
 	cases := map[string]struct {
 		contentLength int
