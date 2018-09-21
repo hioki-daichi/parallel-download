@@ -44,8 +44,8 @@ func TestMain_parse(t *testing.T) {
 }
 
 func TestMain_download(t *testing.T) {
-	ts := newTestServer(t)
-	defer ts.Close()
+	ts, cleanup := newTestServer(t)
+	defer cleanup()
 
 	dir, err := ioutil.TempDir("", "parallel-download")
 	if err != nil {
@@ -153,10 +153,10 @@ func TestMain_toRangeStrings(t *testing.T) {
 	}
 }
 
-func newTestServer(t *testing.T) *httptest.Server {
+func newTestServer(t *testing.T) (*httptest.Server, func()) {
 	t.Helper()
 
-	return httptest.NewServer(http.HandlerFunc(
+	ts := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Accept-Ranges", "bytes")
 			// body, err := genBody(t, r)
@@ -218,4 +218,6 @@ func newTestServer(t *testing.T) *httptest.Server {
 			return
 		},
 	))
+
+	return ts, func() { ts.Close() }
 }
