@@ -138,8 +138,8 @@ func (d *downloader) genFilename() (string, error) {
 		filename = "index.html"
 	}
 
-	_, err = os.Stat(filename)
-	if !os.IsNotExist(err) {
+	_, err = os.Lstat(filename)
+	if err == nil {
 		return "", errExist
 	}
 

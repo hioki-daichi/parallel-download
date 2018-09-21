@@ -99,6 +99,16 @@ func TestMain_genFilename_ParseError(t *testing.T) {
 	}
 }
 
+func TestMain_genFilename_IsNotExist(t *testing.T) {
+	expected := errExist
+
+	d := newDownloader(ioutil.Discard, "http://example.com/main_test.go", &options{parallelism: 8, output: ""})
+	_, actual := d.genFilename()
+	if actual != expected {
+		t.Errorf(`unexpected : expected: "%s" actual: "%s"`, expected, actual)
+	}
+}
+
 func TestMain_toRangeStrings(t *testing.T) {
 	cases := map[string]struct {
 		contentLength int
