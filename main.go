@@ -153,6 +153,7 @@ func (d *downloader) doRangeRequest(rangeString string) (*http.Response, error) 
 
 	req.Header.Set("Range", rangeString)
 
+	fmt.Fprintf(d.outStream, "Start requesting %q ...\n", rangeString)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
