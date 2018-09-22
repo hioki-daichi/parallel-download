@@ -69,7 +69,7 @@ func (d *downloader) download() error {
 		return err
 	}
 
-	responses := map[int]*http.Response{}
+	resps := map[int]*http.Response{}
 
 	var m sync.Mutex
 	eg := errgroup.Group{}
@@ -83,7 +83,7 @@ func (d *downloader) download() error {
 			}
 			fmt.Fprintf(d.outStream, "i: %d, ContentLength: %d, Range: %s\n", i, resp.ContentLength, rangeString)
 			m.Lock()
-			responses[i] = resp
+			resps[i] = resp
 			m.Unlock()
 			return nil
 		})
@@ -97,8 +97,8 @@ func (d *downloader) download() error {
 		return err
 	}
 
-	for i := 0; i < len(responses); i++ {
-		resp := responses[i]
+	for i := 0; i < len(resps); i++ {
+		resp := resps[i]
 		_, err := io.Copy(fp, resp.Body)
 		if err != nil {
 			os.Remove(filename)
