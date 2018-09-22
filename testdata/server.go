@@ -5,13 +5,19 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var contents string
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 func main() {
 	opts := parse()
@@ -21,6 +27,8 @@ func main() {
 }
 
 func handler(w http.ResponseWriter, req *http.Request) {
+	time.Sleep(time.Duration(rand.Intn(2000)) * time.Millisecond)
+
 	w.Header().Set("Accept-Ranges", "bytes")
 	body, err := genBody(req)
 	if err != nil {
