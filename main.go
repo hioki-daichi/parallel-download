@@ -33,14 +33,16 @@ func main() {
 func parse(args ...string) (*options, string) {
 	flg := flag.NewFlagSet("parallel-download", flag.ExitOnError)
 	parallelism := flg.Int("p", 8, "parallelism")
+	timeout := flg.Int("t", 60, "timeout")
 	output := flg.String("o", "", "output")
 	flg.Parse(args)
 	url := flg.Arg(0)
-	return &options{parallelism: *parallelism, output: *output}, url
+	return &options{parallelism: *parallelism, timeout: time.Duration(*timeout) * time.Second, output: *output}, url
 }
 
 type options struct {
 	parallelism int
+	timeout     time.Duration
 	output      string
 }
 
@@ -48,11 +50,12 @@ type downloader struct {
 	outStream   io.Writer
 	url         string
 	parallelism int
+	timeout     time.Duration
 	output      string
 }
 
 func newDownloader(w io.Writer, url string, opts *options) *downloader {
-	return &downloader{outStream: w, url: url, parallelism: opts.parallelism, output: opts.output}
+	return &downloader{outStream: w, url: url, parallelism: opts.parallelism, timeout: opts.timeout, output: opts.output}
 }
 
 func (d *downloader) download() error {
@@ -122,7 +125,7 @@ func (d *downloader) doRequest(rangeStrings []string) (map[int]*http.Response, e
 	resps := map[int]*http.Response{}
 
 	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, d.timeout)
 	defer cancel()
 
 	var m sync.Mutex
