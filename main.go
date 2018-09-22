@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"path"
 	"strconv"
 	"sync"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -119,13 +121,17 @@ func (d *downloader) genFilename() (string, error) {
 func (d *downloader) doRequest(rangeStrings []string) (map[int]*http.Response, error) {
 	resps := map[int]*http.Response{}
 
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
 	var m sync.Mutex
-	eg := errgroup.Group{}
+	eg, ctx := errgroup.WithContext(ctx)
 	for i, rangeString := range rangeStrings {
 		i := i
 		rangeString := rangeString
 		eg.Go(func() error {
-			resp, err := d.doRangeRequest(rangeString)
+			resp, err := d.doRangeRequest(ctx, rangeString)
 			if err != nil {
 				return err
 			}
@@ -143,13 +149,14 @@ func (d *downloader) doRequest(rangeStrings []string) (map[int]*http.Response, e
 	return resps, nil
 }
 
-func (d *downloader) doRangeRequest(rangeString string) (*http.Response, error) {
+func (d *downloader) doRangeRequest(ctx context.Context, rangeString string) (*http.Response, error) {
 	client := &http.Client{Timeout: 0}
 
 	req, err := http.NewRequest("GET", d.url, nil)
 	if err != nil {
 		return nil, err
 	}
+	req = req.WithContext(ctx)
 
 	req.Header.Set("Range", rangeString)
 
