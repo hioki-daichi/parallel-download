@@ -69,26 +69,8 @@ func (d *downloader) download() error {
 		return err
 	}
 
-	resps := map[int]*http.Response{}
-
-	var m sync.Mutex
-	eg := errgroup.Group{}
-	for i, rangeString := range rangeStrings {
-		i := i
-		rangeString := rangeString
-		eg.Go(func() error {
-			resp, err := d.doRangeRequest(rangeString)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(d.outStream, "i: %d, ContentLength: %d, Range: %s\n", i, resp.ContentLength, rangeString)
-			m.Lock()
-			resps[i] = resp
-			m.Unlock()
-			return nil
-		})
-	}
-	if err := eg.Wait(); err != nil {
+	resps, err := d.doRequest(rangeStrings)
+	if err != nil {
 		return err
 	}
 
@@ -132,6 +114,33 @@ func (d *downloader) genFilename() (string, error) {
 	}
 
 	return filename, nil
+}
+
+func (d *downloader) doRequest(rangeStrings []string) (map[int]*http.Response, error) {
+	resps := map[int]*http.Response{}
+
+	var m sync.Mutex
+	eg := errgroup.Group{}
+	for i, rangeString := range rangeStrings {
+		i := i
+		rangeString := rangeString
+		eg.Go(func() error {
+			resp, err := d.doRangeRequest(rangeString)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(d.outStream, "i: %d, ContentLength: %d, Range: %s\n", i, resp.ContentLength, rangeString)
+			m.Lock()
+			resps[i] = resp
+			m.Unlock()
+			return nil
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+
+	return resps, nil
 }
 
 func (d *downloader) doRangeRequest(rangeString string) (*http.Response, error) {
