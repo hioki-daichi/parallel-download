@@ -137,13 +137,10 @@ func (d *downloader) download(ctx context.Context) error {
 		return err
 	}
 
-	for i := 0; i < len(resps); i++ {
-		resp := resps[i]
-		_, err := io.Copy(fp, resp.Body)
-		if err != nil {
-			os.Remove(filename)
-			return err
-		}
+	err = concatResps(fp, resps)
+	if err != nil {
+		os.Remove(filename)
+		return err
 	}
 
 	fmt.Fprintf(d.outStream, "%q saved\n", filename)
@@ -287,4 +284,16 @@ func toRangeStrings(contentLength int, parallelism int) ([]string, error) {
 type rangeStruct struct {
 	first int
 	last  int
+}
+
+func concatResps(fp *os.File, resps map[int]*http.Response) error {
+	for i := 0; i < len(resps); i++ {
+		resp := resps[i]
+		_, err := io.Copy(fp, resp.Body)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
