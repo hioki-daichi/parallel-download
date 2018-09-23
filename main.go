@@ -197,7 +197,7 @@ func (d *downloader) doRequest(ctx context.Context, rangeStrings []string, dir s
 		i := i
 		rangeString := rangeString
 		go func() {
-			resp, err := d.doRangeRequest(rangeString)
+			resp, err := d.doRangeRequest(ctx, rangeString)
 			if err != nil {
 				errCh <- err
 				return
@@ -249,7 +249,7 @@ func (d *downloader) doRequest(ctx context.Context, rangeStrings []string, dir s
 	return chunks, nil
 }
 
-func (d *downloader) doRangeRequest(rangeString string) (*http.Response, error) {
+func (d *downloader) doRangeRequest(ctx context.Context, rangeString string) (*http.Response, error) {
 	log.Print("... doRangeRequest start")
 	defer log.Print("... doRangeRequest end")
 
@@ -261,7 +261,7 @@ func (d *downloader) doRangeRequest(rangeString string) (*http.Response, error) 
 	req.Header.Set("Range", rangeString)
 
 	fmt.Fprintf(d.outStream, "Start requesting %q ...\n", rangeString)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, err
 	}
