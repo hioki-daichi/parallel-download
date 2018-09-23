@@ -10,9 +10,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"path"
 	"strconv"
 	"sync"
+	"syscall"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -22,11 +24,26 @@ var (
 )
 
 func main() {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	setupCloseHandler(cancel)
 	opts, url := parse(os.Args[1:]...)
-	err := newDownloader(os.Stdout, url, opts).download()
+	err := newDownloader(os.Stdout, url, opts).download(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func setupCloseHandler(cancel context.CancelFunc) {
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		fmt.Println("\r- Ctrl+C pressed in Terminal")
+		cancel()
+		os.Exit(0)
+	}()
 }
 
 func parse(args ...string) (*options, string) {
@@ -54,7 +71,7 @@ func newDownloader(w io.Writer, url string, opts *options) *downloader {
 	return &downloader{outStream: w, url: url, parallelism: opts.parallelism, output: opts.output}
 }
 
-func (d *downloader) download() error {
+func (d *downloader) download(ctx context.Context) error {
 	filename, err := d.genFilename()
 	if err != nil {
 		return err
@@ -70,7 +87,7 @@ func (d *downloader) download() error {
 		return err
 	}
 
-	resps, err := d.doRequest(rangeStrings)
+	resps, err := d.doRequest(ctx, rangeStrings)
 	if err != nil {
 		return err
 	}
@@ -117,9 +134,7 @@ func (d *downloader) genFilename() (string, error) {
 	return filename, nil
 }
 
-func (d *downloader) doRequest(rangeStrings []string) (map[int]*http.Response, error) {
-	ctx := context.Background()
-
+func (d *downloader) doRequest(ctx context.Context, rangeStrings []string) (map[int]*http.Response, error) {
 	ch := make(chan map[int]*http.Response)
 	errCh := make(chan error)
 
@@ -146,6 +161,7 @@ func (d *downloader) doRequest(rangeStrings []string) (map[int]*http.Response, e
 		eg.Go(func() error {
 			select {
 			case <-ctx.Done():
+				fmt.Println("ctx.Done() in eg.Go")
 				return nil
 			case m := <-ch:
 				for k, v := range m {
