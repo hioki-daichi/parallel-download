@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"path"
 	"strconv"
 	"sync"
-	"time"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -33,16 +31,14 @@ func main() {
 func parse(args ...string) (*options, string) {
 	flg := flag.NewFlagSet("parallel-download", flag.ExitOnError)
 	parallelism := flg.Int("p", 8, "parallelism")
-	timeout := flg.Int("t", 60, "timeout")
 	output := flg.String("o", "", "output")
 	flg.Parse(args)
 	url := flg.Arg(0)
-	return &options{parallelism: *parallelism, timeout: time.Duration(*timeout) * time.Second, output: *output}, url
+	return &options{parallelism: *parallelism, output: *output}, url
 }
 
 type options struct {
 	parallelism int
-	timeout     time.Duration
 	output      string
 }
 
@@ -50,12 +46,11 @@ type downloader struct {
 	outStream   io.Writer
 	url         string
 	parallelism int
-	timeout     time.Duration
 	output      string
 }
 
 func newDownloader(w io.Writer, url string, opts *options) *downloader {
-	return &downloader{outStream: w, url: url, parallelism: opts.parallelism, timeout: opts.timeout, output: opts.output}
+	return &downloader{outStream: w, url: url, parallelism: opts.parallelism, output: opts.output}
 }
 
 func (d *downloader) download() error {
@@ -124,17 +119,13 @@ func (d *downloader) genFilename() (string, error) {
 func (d *downloader) doRequest(rangeStrings []string) (map[int]*http.Response, error) {
 	resps := map[int]*http.Response{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, d.timeout)
-	defer cancel()
-
 	var m sync.Mutex
-	eg, ctx := errgroup.WithContext(ctx)
+	eg := errgroup.Group{}
 	for i, rangeString := range rangeStrings {
 		i := i
 		rangeString := rangeString
 		eg.Go(func() error {
-			resp, err := d.doRangeRequest(ctx, rangeString)
+			resp, err := d.doRangeRequest(rangeString)
 			if err != nil {
 				return err
 			}
@@ -152,14 +143,13 @@ func (d *downloader) doRequest(rangeStrings []string) (map[int]*http.Response, e
 	return resps, nil
 }
 
-func (d *downloader) doRangeRequest(ctx context.Context, rangeString string) (*http.Response, error) {
+func (d *downloader) doRangeRequest(rangeString string) (*http.Response, error) {
 	client := &http.Client{Timeout: 0}
 
 	req, err := http.NewRequest("GET", d.url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req = req.WithContext(ctx)
 
 	req.Header.Set("Range", rangeString)
 
