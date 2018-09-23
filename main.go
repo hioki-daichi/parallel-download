@@ -144,8 +144,6 @@ func (d *downloader) doRequest(rangeStrings []string) (map[int]*http.Response, e
 }
 
 func (d *downloader) doRangeRequest(rangeString string) (*http.Response, error) {
-	client := &http.Client{Timeout: 0}
-
 	req, err := http.NewRequest("GET", d.url, nil)
 	if err != nil {
 		return nil, err
@@ -154,7 +152,7 @@ func (d *downloader) doRangeRequest(rangeString string) (*http.Response, error) 
 	req.Header.Set("Range", rangeString)
 
 	fmt.Fprintf(d.outStream, "Start requesting %q ...\n", rangeString)
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
