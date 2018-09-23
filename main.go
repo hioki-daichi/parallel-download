@@ -217,7 +217,6 @@ func (d *downloader) doRequest(ctx context.Context, rangeStrings []string, dir s
 		eg.Go(func() error {
 			select {
 			case <-ctx.Done():
-				fmt.Fprintln(d.outStream, "ctx.Done() in eg.Go")
 				return nil
 			case m := <-ch:
 				fmt.Fprintln(d.outStream, m)
