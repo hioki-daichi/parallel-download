@@ -29,9 +29,6 @@ var (
 var cleanFns []func()
 
 func main() {
-	log.Print("... main start")
-	defer log.Print("... main end")
-
 	// for debug
 	go printNumGoroutineLoop()
 
@@ -116,9 +113,6 @@ func newDownloader(w io.Writer, url string, opts *options) *downloader {
 }
 
 func (d *downloader) download(ctx context.Context) error {
-	log.Print("... download start")
-	defer log.Print("... download end")
-
 	filename, err := d.genFilename()
 	if err != nil {
 		return err
@@ -187,9 +181,6 @@ func (d *downloader) genFilename() (string, error) {
 }
 
 func (d *downloader) doRequest(ctx context.Context, rangeStrings []string, dir string) (map[int]string, error) {
-	log.Print("... doRequest start")
-	defer log.Print("... doRequest end")
-
 	ch := make(chan map[int]string)
 	errCh := make(chan error)
 
@@ -250,9 +241,6 @@ func (d *downloader) doRequest(ctx context.Context, rangeStrings []string, dir s
 }
 
 func (d *downloader) doRangeRequest(ctx context.Context, rangeString string) (*http.Response, error) {
-	log.Print("... doRangeRequest start")
-	defer log.Print("... doRangeRequest end")
-
 	req, err := http.NewRequest("GET", d.url, nil)
 	if err != nil {
 		return nil, err
