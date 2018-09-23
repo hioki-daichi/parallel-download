@@ -29,21 +29,28 @@ func main() {
 	log.Print("... main start")
 	defer log.Print("... main end")
 
+	// for debug
 	go printNumGoroutineLoop()
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	setupCloseHandler(cancel)
+
 	opts, url := parse(os.Args[1:]...)
-	err := newDownloader(os.Stdout, url, opts).download(ctx)
+
+	d := newDownloader(os.Stdout, url, opts)
+	err := d.download(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// for debug
 	time.Sleep(100 * time.Millisecond)
 }
 
+// for debug
 func printNumGoroutineLoop() {
 	for {
 		fmt.Printf("num goroutine: %d\n", runtime.NumGoroutine())
@@ -51,6 +58,7 @@ func printNumGoroutineLoop() {
 	}
 }
 
+// setupCloseHandler handles Ctrl+C
 func setupCloseHandler(cancel context.CancelFunc) {
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -62,13 +70,21 @@ func setupCloseHandler(cancel context.CancelFunc) {
 	}()
 }
 
+// parse parses command line options
 func parse(args ...string) (*options, string) {
 	flg := flag.NewFlagSet("parallel-download", flag.ExitOnError)
+
 	parallelism := flg.Int("p", 8, "parallelism")
 	output := flg.String("o", "", "output")
+
 	flg.Parse(args)
+
 	url := flg.Arg(0)
-	return &options{parallelism: *parallelism, output: *output}, url
+
+	return &options{
+		parallelism: *parallelism,
+		output:      *output,
+	}, url
 }
 
 type options struct {
@@ -84,7 +100,12 @@ type downloader struct {
 }
 
 func newDownloader(w io.Writer, url string, opts *options) *downloader {
-	return &downloader{outStream: w, url: url, parallelism: opts.parallelism, output: opts.output}
+	return &downloader{
+		outStream:   w,
+		url:         url,
+		parallelism: opts.parallelism,
+		output:      opts.output,
+	}
 }
 
 func (d *downloader) download(ctx context.Context) error {
