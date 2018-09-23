@@ -15,12 +15,13 @@ import (
 
 var contents string
 
+var opts = parse()
+
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
 func main() {
-	opts := parse()
 	setContents(opts.path)
 	http.HandleFunc("/foo.png", handler)
 	http.ListenAndServe(opts.addr, nil)
@@ -34,6 +35,10 @@ func handler(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprint(w, err.Error())
+		return
+	}
+	if req.Method == "GET" && rand.Intn(100) < opts.failureProbability {
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
@@ -85,14 +90,16 @@ func parse() *options {
 	flg := flag.NewFlagSet("test", flag.ExitOnError)
 	port := flg.Int("port", 8080, "port")
 	path := flg.String("f", "./testdata/foo.png", "path")
+	failureProbability := flg.Int("failureProbability", 0, "probability of failure")
 	flg.Parse(os.Args[1:])
 	addr := ":" + strconv.Itoa(*port)
-	return &options{addr: addr, path: *path}
+	return &options{addr: addr, path: *path, failureProbability: *failureProbability}
 }
 
 type options struct {
-	addr string
-	path string
+	addr               string
+	path               string
+	failureProbability int
 }
 
 func setContents(path string) {
