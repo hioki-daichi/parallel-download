@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -53,7 +54,7 @@ func TestMain_download(t *testing.T) {
 	}
 	defer os.Remove(dir)
 
-	err = newDownloader(ioutil.Discard, ts.URL, &options{parallelism: 8, output: filepath.Join(dir, "foo.png")}).download()
+	err = newDownloader(ioutil.Discard, ts.URL, &options{parallelism: 8, output: filepath.Join(dir, "foo.png")}).download(context.Background())
 	if err != nil {
 		t.Fatalf("err %s", err)
 	}
