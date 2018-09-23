@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -117,25 +118,48 @@ func (d *downloader) genFilename() (string, error) {
 }
 
 func (d *downloader) doRequest(rangeStrings []string) (map[int]*http.Response, error) {
-	resps := map[int]*http.Response{}
+	ctx := context.Background()
 
-	var m sync.Mutex
-	eg := errgroup.Group{}
+	ch := make(chan map[int]*http.Response)
+	errCh := make(chan error)
+
 	for i, rangeString := range rangeStrings {
 		i := i
 		rangeString := rangeString
-		eg.Go(func() error {
+		go func() {
 			resp, err := d.doRangeRequest(rangeString)
 			if err != nil {
-				return err
+				errCh <- err
+				return
 			}
 			fmt.Fprintf(d.outStream, "i: %d, ContentLength: %d, Range: %s\n", i, resp.ContentLength, rangeString)
-			m.Lock()
-			resps[i] = resp
-			m.Unlock()
-			return nil
+			ch <- map[int]*http.Response{i: resp}
+			return
+		}()
+	}
+
+	resps := map[int]*http.Response{}
+
+	eg, ctx := errgroup.WithContext(ctx)
+	var mu sync.Mutex
+	for i := 0; i < len(rangeStrings); i++ {
+		eg.Go(func() error {
+			select {
+			case <-ctx.Done():
+				return nil
+			case m := <-ch:
+				for k, v := range m {
+					mu.Lock()
+					resps[k] = v
+					mu.Unlock()
+				}
+				return nil
+			case err := <-errCh:
+				return err
+			}
 		})
 	}
+
 	if err := eg.Wait(); err != nil {
 		return nil, err
 	}
