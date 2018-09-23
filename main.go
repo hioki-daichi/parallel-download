@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -127,23 +128,23 @@ func (d *downloader) download(ctx context.Context) error {
 		return err
 	}
 
-	resps, err := d.doRequest(ctx, rangeStrings)
+	chunks, err := d.doRequest(ctx, rangeStrings)
 	if err != nil {
 		return err
 	}
 
-	fp, err := os.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	dst, err := os.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
 
-	err = concatResps(fp, resps)
+	err = concatChunks(dst, chunks)
 	if err != nil {
-		os.Remove(filename)
+		os.Remove(dst.Name())
 		return err
 	}
 
-	fmt.Fprintf(d.outStream, "%q saved\n", filename)
+	fmt.Fprintf(d.outStream, "%q saved\n", dst.Name())
 
 	return nil
 }
@@ -171,11 +172,11 @@ func (d *downloader) genFilename() (string, error) {
 	return filename, nil
 }
 
-func (d *downloader) doRequest(ctx context.Context, rangeStrings []string) (map[int]*http.Response, error) {
+func (d *downloader) doRequest(ctx context.Context, rangeStrings []string) (map[int]string, error) {
 	log.Print("... doRequest start")
 	defer log.Print("... doRequest end")
 
-	ch := make(chan map[int]*http.Response)
+	ch := make(chan map[int]string)
 	errCh := make(chan error)
 
 	for i, rangeString := range rangeStrings {
@@ -187,13 +188,23 @@ func (d *downloader) doRequest(ctx context.Context, rangeStrings []string) (map[
 				errCh <- err
 				return
 			}
-			fmt.Fprintf(d.outStream, "i: %d, ContentLength: %d, Range: %s\n", i, resp.ContentLength, rangeString)
-			ch <- map[int]*http.Response{i: resp}
+			tmp, err := ioutil.TempFile("", "parallel-download")
+			if err != nil {
+				errCh <- err
+				return
+			}
+			_, err = io.Copy(tmp, resp.Body)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			resp.Body.Close()
+			ch <- map[int]string{i: tmp.Name()}
 			return
 		}()
 	}
 
-	resps := map[int]*http.Response{}
+	chunks := map[int]string{}
 
 	eg, ctx := errgroup.WithContext(ctx)
 	var mu sync.Mutex
@@ -201,12 +212,13 @@ func (d *downloader) doRequest(ctx context.Context, rangeStrings []string) (map[
 		eg.Go(func() error {
 			select {
 			case <-ctx.Done():
-				fmt.Println("ctx.Done() in eg.Go")
+				fmt.Fprintln(d.outStream, "ctx.Done() in eg.Go")
 				return nil
 			case m := <-ch:
+				fmt.Fprintln(d.outStream, m)
 				for k, v := range m {
 					mu.Lock()
-					resps[k] = v
+					chunks[k] = v
 					mu.Unlock()
 				}
 				return nil
@@ -220,7 +232,7 @@ func (d *downloader) doRequest(ctx context.Context, rangeStrings []string) (map[
 		return nil, err
 	}
 
-	return resps, nil
+	return chunks, nil
 }
 
 func (d *downloader) doRangeRequest(rangeString string) (*http.Response, error) {
@@ -286,10 +298,19 @@ type rangeStruct struct {
 	last  int
 }
 
-func concatResps(fp *os.File, resps map[int]*http.Response) error {
-	for i := 0; i < len(resps); i++ {
-		resp := resps[i]
-		_, err := io.Copy(fp, resp.Body)
+func concatChunks(dst *os.File, chunks map[int]string) error {
+	for i := 0; i < len(chunks); i++ {
+		chunk := chunks[i]
+		src, err := os.Open(chunk)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(dst, src)
+		if err != nil {
+			return err
+		}
+
+		err = os.Remove(chunk)
 		if err != nil {
 			return err
 		}
