@@ -26,6 +26,8 @@ var (
 	errExist = errors.New("file already exists")
 )
 
+var cleanFns []func()
+
 func main() {
 	log.Print("... main start")
 	defer log.Print("... main end")
@@ -37,7 +39,9 @@ func main() {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	setupCloseHandler(cancel)
+	cleanFns = append(cleanFns, cancel)
+
+	setupCloseHandler()
 
 	opts, url := parse(os.Args[1:]...)
 
@@ -60,13 +64,15 @@ func printNumGoroutineLoop() {
 }
 
 // setupCloseHandler handles Ctrl+C
-func setupCloseHandler(cancel context.CancelFunc) {
+func setupCloseHandler() {
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
 		fmt.Println("\r- Ctrl+C pressed in Terminal")
-		cancel()
+		for _, f := range cleanFns {
+			f()
+		}
 		os.Exit(0)
 	}()
 }
@@ -132,8 +138,9 @@ func (d *downloader) download(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(tempDir)
-	defer os.RemoveAll(tempDir)
+	cleanTempDir := func() { os.RemoveAll(tempDir) }
+	defer cleanTempDir()
+	cleanFns = append(cleanFns, cleanTempDir)
 
 	chunks, err := d.doRequest(ctx, rangeStrings, tempDir)
 	if err != nil {
