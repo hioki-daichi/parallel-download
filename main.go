@@ -128,7 +128,14 @@ func (d *downloader) download(ctx context.Context) error {
 		return err
 	}
 
-	chunks, err := d.doRequest(ctx, rangeStrings)
+	tempDir, err := ioutil.TempDir("", "parallel-download")
+	if err != nil {
+		return err
+	}
+	fmt.Println(tempDir)
+	defer os.RemoveAll(tempDir)
+
+	chunks, err := d.doRequest(ctx, rangeStrings, tempDir)
 	if err != nil {
 		return err
 	}
@@ -172,7 +179,7 @@ func (d *downloader) genFilename() (string, error) {
 	return filename, nil
 }
 
-func (d *downloader) doRequest(ctx context.Context, rangeStrings []string) (map[int]string, error) {
+func (d *downloader) doRequest(ctx context.Context, rangeStrings []string, dir string) (map[int]string, error) {
 	log.Print("... doRequest start")
 	defer log.Print("... doRequest end")
 
@@ -188,7 +195,7 @@ func (d *downloader) doRequest(ctx context.Context, rangeStrings []string) (map[
 				errCh <- err
 				return
 			}
-			tmp, err := ioutil.TempFile("", "parallel-download")
+			tmp, err := os.Create(path.Join(dir, fmt.Sprintf("%02d", i)))
 			if err != nil {
 				errCh <- err
 				return
@@ -306,11 +313,6 @@ func concatChunks(dst *os.File, chunks map[int]string) error {
 			return err
 		}
 		_, err = io.Copy(dst, src)
-		if err != nil {
-			return err
-		}
-
-		err = os.Remove(chunk)
 		if err != nil {
 			return err
 		}
