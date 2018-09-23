@@ -12,9 +12,11 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -27,6 +29,8 @@ func main() {
 	log.Print("... main start")
 	defer log.Print("... main end")
 
+	go printNumGoroutineLoop()
+
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -35,6 +39,15 @@ func main() {
 	err := newDownloader(os.Stdout, url, opts).download(ctx)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	time.Sleep(100 * time.Millisecond)
+}
+
+func printNumGoroutineLoop() {
+	for {
+		fmt.Printf("num goroutine: %d\n", runtime.NumGoroutine())
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
