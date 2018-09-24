@@ -78,7 +78,7 @@ func (d *downloader) download(ctx context.Context) error {
 		return err
 	}
 
-	rangeStrings, err := generateFormattedRangeHeaders(int(resp.ContentLength), d.parallelism)
+	formattedRangeHeaders, err := generateFormattedRangeHeaders(int(resp.ContentLength), d.parallelism)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func (d *downloader) download(ctx context.Context) error {
 	defer cleanTempDir()
 	interruptor.RegisterCleanFunction(cleanTempDir)
 
-	chunks, err := d.doRequest(ctx, rangeStrings, tempDir)
+	chunkFilenames, err := d.doRequest(ctx, formattedRangeHeaders, tempDir)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (d *downloader) download(ctx context.Context) error {
 		return err
 	}
 
-	err = concatChunks(dst, chunks)
+	err = concatChunkFilenames(dst, chunkFilenames)
 	if err != nil {
 		os.Remove(dst.Name())
 		return err
@@ -133,11 +133,11 @@ func (d *downloader) genFilename() (string, error) {
 	return filename, nil
 }
 
-func (d *downloader) doRequest(ctx context.Context, rangeStrings []string, dir string) (map[int]string, error) {
+func (d *downloader) doRequest(ctx context.Context, formattedRangeHeaders []string, dir string) (map[int]string, error) {
 	ch := make(chan map[int]string)
 	errCh := make(chan error)
 
-	for i, rangeString := range rangeStrings {
+	for i, rangeString := range formattedRangeHeaders {
 		i := i
 		rangeString := rangeString
 		go func() {
@@ -162,11 +162,11 @@ func (d *downloader) doRequest(ctx context.Context, rangeStrings []string, dir s
 		}()
 	}
 
-	chunks := map[int]string{}
+	chunkFilenames := map[int]string{}
 
 	eg, ctx := errgroup.WithContext(ctx)
 	var mu sync.Mutex
-	for i := 0; i < len(rangeStrings); i++ {
+	for i := 0; i < len(formattedRangeHeaders); i++ {
 		eg.Go(func() error {
 			select {
 			case <-ctx.Done():
@@ -175,7 +175,7 @@ func (d *downloader) doRequest(ctx context.Context, rangeStrings []string, dir s
 				fmt.Fprintln(d.outStream, m)
 				for k, v := range m {
 					mu.Lock()
-					chunks[k] = v
+					chunkFilenames[k] = v
 					mu.Unlock()
 				}
 				return nil
@@ -189,7 +189,7 @@ func (d *downloader) doRequest(ctx context.Context, rangeStrings []string, dir s
 		return nil, err
 	}
 
-	return chunks, nil
+	return chunkFilenames, nil
 }
 
 func (d *downloader) doRangeRequest(ctx context.Context, rangeString string) (*http.Response, error) {
@@ -222,7 +222,7 @@ func generateFormattedRangeHeaders(contentLength int, parallelism int) ([]string
 		parallelism = contentLength
 	}
 
-	chunkLen := contentLength / parallelism
+	chunkContentLength := contentLength / parallelism
 	rem := contentLength % parallelism
 
 	ss := make([]string, 0)
@@ -230,7 +230,7 @@ func generateFormattedRangeHeaders(contentLength int, parallelism int) ([]string
 	cntr := 0
 	for n := parallelism; n > 0; n-- {
 		min := cntr
-		max := cntr + chunkLen - 1
+		max := cntr + chunkContentLength - 1
 
 		if n == 1 && rem != 0 {
 			max += rem
@@ -238,16 +238,16 @@ func generateFormattedRangeHeaders(contentLength int, parallelism int) ([]string
 
 		ss = append(ss, fmt.Sprintf("bytes=%d-%d", min, max))
 
-		cntr += chunkLen
+		cntr += chunkContentLength
 	}
 
 	return ss, nil
 }
 
-func concatChunks(dst *os.File, chunks map[int]string) error {
-	for i := 0; i < len(chunks); i++ {
-		chunk := chunks[i]
-		src, err := os.Open(chunk)
+func concatChunkFilenames(dst *os.File, chunkFilenames map[int]string) error {
+	for i := 0; i < len(chunkFilenames); i++ {
+		chunkFilename := chunkFilenames[i]
+		src, err := os.Open(chunkFilename)
 		if err != nil {
 			return err
 		}
