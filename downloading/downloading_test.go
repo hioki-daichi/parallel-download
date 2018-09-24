@@ -17,8 +17,9 @@ import (
 )
 
 var registeredTestdatum = map[string]string{
-	"foo.png": readTestdata("foo.png"),
-	"a.txt":   readTestdata("a.txt"),
+	"foo.png":   readTestdata("foo.png"),
+	"a.txt":     readTestdata("a.txt"),
+	"empty.txt": readTestdata("empty.txt"),
 }
 
 var currentTestdataName string
@@ -52,6 +53,23 @@ func TestDownloading_Download_Success(t *testing.T) {
 		})
 	}
 
+}
+
+func TestDownloading_Download_NoContent(t *testing.T) {
+	expected := errNoContent
+
+	currentTestdataName = "empty.txt"
+
+	fp, clean := createDstFile(t)
+	defer clean()
+
+	ts, clean := newTestServer(t, normalHandler)
+	defer clean()
+
+	actual := newDownloader(t, fp, ts, 1).Download(context.Background())
+	if actual != expected {
+		t.Errorf(`unexpected error: expected: "%s" actual: "%s"`, expected, actual)
+	}
 }
 
 func TestDownloading_Download_AcceptRangesHeaderNotFound(t *testing.T) {
