@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"strconv"
 	"sync"
 
 	"github.com/hioki-daichi/parallel-download/interruptor"
@@ -173,7 +172,7 @@ func (d *Downloader) downloadChunkFile(ctx context.Context, i int, formattedRang
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		errCh <- errors.New("unexpected response: status code: " + strconv.Itoa(resp.StatusCode))
+		errCh <- fmt.Errorf("unexpected response: status code: %d", resp.StatusCode)
 		return
 	}
 
