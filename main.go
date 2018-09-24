@@ -42,10 +42,13 @@ func execute(args []string, w io.Writer) error {
 
 	setupCloseHandler()
 
-	opts, url := opt.Parse(args...)
+	opts, err := opt.Parse(args...)
+	if err != nil {
+		return err
+	}
 
-	d := newDownloader(w, url, opts)
-	err := d.download(ctx)
+	d := newDownloader(w, opts)
+	err = d.download(ctx)
 	if err != nil {
 		return err
 	}
@@ -68,15 +71,15 @@ func setupCloseHandler() {
 
 type downloader struct {
 	outStream   io.Writer
-	url         string
+	url         *url.URL
 	parallelism int
 	output      string
 }
 
-func newDownloader(w io.Writer, url string, opts *opt.Options) *downloader {
+func newDownloader(w io.Writer, opts *opt.Options) *downloader {
 	return &downloader{
 		outStream:   w,
-		url:         url,
+		url:         opts.URL,
 		parallelism: opts.Parallelism,
 		output:      opts.Output,
 	}
@@ -88,7 +91,7 @@ func (d *downloader) download(ctx context.Context) error {
 		return err
 	}
 
-	resp, err := http.Head(d.url)
+	resp, err := http.Head(d.url.String())
 	if err != nil {
 		return err
 	}
@@ -132,17 +135,13 @@ func (d *downloader) genFilename() (string, error) {
 		return d.output, nil
 	}
 
-	u, err := url.Parse(d.url)
-	if err != nil {
-		return "", err
-	}
-	_, filename := path.Split(u.Path)
+	_, filename := path.Split(d.url.Path)
 
 	if filename == "" {
 		filename = "index.html"
 	}
 
-	_, err = os.Lstat(filename)
+	_, err := os.Lstat(filename)
 	if err == nil {
 		return "", errExist
 	}
@@ -210,7 +209,7 @@ func (d *downloader) doRequest(ctx context.Context, rangeStrings []string, dir s
 }
 
 func (d *downloader) doRangeRequest(ctx context.Context, rangeString string) (*http.Response, error) {
-	req, err := http.NewRequest("GET", d.url, nil)
+	req, err := http.NewRequest("GET", d.url.String(), nil)
 	if err != nil {
 		return nil, err
 	}
