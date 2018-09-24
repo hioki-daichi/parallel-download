@@ -44,6 +44,7 @@ func handler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	w.WriteHeader(http.StatusPartialContent)
 	fmt.Fprint(w, body)
 }
 

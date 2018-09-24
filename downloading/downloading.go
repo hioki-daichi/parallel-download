@@ -175,7 +175,7 @@ func (d *Downloader) downloadChunkFile(ctx context.Context, i int, formattedRang
 		return
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusPartialContent {
 		errCh <- fmt.Errorf("unexpected response: status code: %d", resp.StatusCode)
 		return
 	}

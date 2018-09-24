@@ -204,6 +204,8 @@ func normalHandler(t *testing.T, w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(body)))
 
+	w.WriteHeader(http.StatusPartialContent)
+
 	fmt.Fprint(w, body)
 }
 
