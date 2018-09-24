@@ -10,12 +10,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/signal"
 	"path"
 	"strconv"
 	"sync"
-	"syscall"
 
+	"github.com/hioki-daichi/parallel-download/interruptor"
 	"github.com/hioki-daichi/parallel-download/opt"
 	"golang.org/x/sync/errgroup"
 )
@@ -23,8 +22,6 @@ import (
 var (
 	errExist = errors.New("file already exists")
 )
-
-var cleanFns []func()
 
 func main() {
 	err := execute(os.Args[1:], os.Stdout)
@@ -38,9 +35,8 @@ func execute(args []string, w io.Writer) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	cleanFns = append(cleanFns, cancel)
-
-	setupCloseHandler()
+	interruptor.RegisterCleanFunction(cancel)
+	interruptor.Setup()
 
 	opts, err := opt.Parse(args...)
 	if err != nil {
@@ -53,20 +49,6 @@ func execute(args []string, w io.Writer) error {
 		return err
 	}
 	return nil
-}
-
-// setupCloseHandler handles Ctrl+C
-func setupCloseHandler() {
-	c := make(chan os.Signal, 2)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		fmt.Println("\r- Ctrl+C pressed in Terminal")
-		for _, f := range cleanFns {
-			f()
-		}
-		os.Exit(0)
-	}()
 }
 
 type downloader struct {
@@ -107,7 +89,7 @@ func (d *downloader) download(ctx context.Context) error {
 	}
 	cleanTempDir := func() { os.RemoveAll(tempDir) }
 	defer cleanTempDir()
-	cleanFns = append(cleanFns, cleanTempDir)
+	interruptor.RegisterCleanFunction(cleanTempDir)
 
 	chunks, err := d.doRequest(ctx, rangeStrings, tempDir)
 	if err != nil {
