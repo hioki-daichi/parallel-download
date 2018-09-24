@@ -13,11 +13,9 @@ import (
 	"os"
 	"os/signal"
 	"path"
-	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
-	"time"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -29,9 +27,6 @@ var (
 var cleanFns []func()
 
 func main() {
-	// for debug
-	go printNumGoroutineLoop()
-
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -46,17 +41,6 @@ func main() {
 	err := d.download(ctx)
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	// for debug
-	time.Sleep(100 * time.Millisecond)
-}
-
-// for debug
-func printNumGoroutineLoop() {
-	for {
-		fmt.Printf("num goroutine: %d\n", runtime.NumGoroutine())
-		time.Sleep(100 * time.Millisecond)
 	}
 }
 
