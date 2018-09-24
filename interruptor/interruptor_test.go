@@ -1,7 +1,6 @@
 package interruptor
 
 import (
-	"fmt"
 	"os"
 	"testing"
 )
@@ -17,11 +16,13 @@ func TestInterruptor_RegisterCleanFunction(t *testing.T) {
 }
 
 func TestInterruptor_setup(t *testing.T) {
-	RegisterCleanFunction(func() { fmt.Println("clean") })
+	cleanFns = append(cleanFns, func() {})
 	proc, err := os.FindProcess(os.Getpid())
 	if err != nil {
 		t.Fatalf("err %s", err)
 	}
-	setup(func() { fmt.Println("exit") })
+	doneCh := make(chan struct{})
+	setup(func() { doneCh <- struct{}{} })
 	proc.Signal(os.Interrupt)
+	<-doneCh
 }
