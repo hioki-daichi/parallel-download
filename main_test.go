@@ -11,38 +11,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/hioki-daichi/parallel-download/opt"
 )
-
-func TestMain_parse(t *testing.T) {
-	cases := map[string]struct {
-		args         []string
-		expectedOpts *options
-		expectedURL  string
-	}{
-		"no options":         {args: []string{"http://example.com/foo.png"}, expectedOpts: &options{parallelism: 8, output: ""}, expectedURL: "http://example.com/foo.png"},
-		"parallelism option": {args: []string{"-p=2", "http://example.com/foo.png"}, expectedOpts: &options{parallelism: 2, output: ""}, expectedURL: "http://example.com/foo.png"},
-		"output option":      {args: []string{"-o=bar.png", "http://example.com/foo.png"}, expectedOpts: &options{parallelism: 8, output: "bar.png"}, expectedURL: "http://example.com/foo.png"},
-	}
-
-	for n, c := range cases {
-		c := c
-		t.Run(n, func(t *testing.T) {
-			t.Parallel()
-
-			args := c.args
-			expectedOpts := c.expectedOpts
-			expectedURL := c.expectedURL
-
-			opts, url := parse(args...)
-			if !reflect.DeepEqual(opts, expectedOpts) {
-				t.Errorf(`unexpected *options: expected: %v actual: %v`, expectedOpts, opts)
-			}
-			if url != expectedURL {
-				t.Errorf(`unexpected url: expected: "%s" actual: "%s"`, expectedURL, url)
-			}
-		})
-	}
-}
 
 func TestMain_genFilename(t *testing.T) {
 	cases := map[string]struct {
@@ -63,7 +34,7 @@ func TestMain_genFilename(t *testing.T) {
 			output := c.output
 			url := c.url
 
-			actual, err := newDownloader(ioutil.Discard, url, &options{parallelism: 8, output: output}).genFilename()
+			actual, err := newDownloader(ioutil.Discard, url, &opt.Options{Parallelism: 8, Output: output}).genFilename()
 			if err != nil {
 				t.Fatalf("err %s", err)
 			}
@@ -78,7 +49,7 @@ func TestMain_genFilename_ParseError(t *testing.T) {
 	t.Parallel()
 
 	expected := `parse %: invalid URL escape "%"`
-	d := newDownloader(ioutil.Discard, "%", &options{parallelism: 8, output: ""})
+	d := newDownloader(ioutil.Discard, "%", &opt.Options{Parallelism: 8, Output: ""})
 	_, err := d.genFilename()
 	actual := err.Error()
 	if actual != expected {
@@ -91,7 +62,7 @@ func TestMain_genFilename_IsNotExist(t *testing.T) {
 
 	expected := errExist
 
-	d := newDownloader(ioutil.Discard, "http://example.com/main_test.go", &options{parallelism: 8, output: ""})
+	d := newDownloader(ioutil.Discard, "http://example.com/main_test.go", &opt.Options{Parallelism: 8, Output: ""})
 	_, actual := d.genFilename()
 	if actual != expected {
 		t.Errorf(`unexpected : expected: "%s" actual: "%s"`, expected, actual)
@@ -102,7 +73,7 @@ func TestMain_doRangeRequest_ParseError(t *testing.T) {
 	t.Parallel()
 
 	expected := `parse %: invalid URL escape "%"`
-	_, err := newDownloader(ioutil.Discard, "%", &options{parallelism: 8, output: ""}).doRangeRequest(context.Background(), "bytes=0-99")
+	_, err := newDownloader(ioutil.Discard, "%", &opt.Options{Parallelism: 8, Output: ""}).doRangeRequest(context.Background(), "bytes=0-99")
 	actual := err.Error()
 	if actual != expected {
 		t.Errorf(`unexpected : expected: "%s" actual: "%s"`, expected, actual)
@@ -112,16 +83,16 @@ func TestMain_doRangeRequest_ParseError(t *testing.T) {
 func TestMain_toRangeStrings(t *testing.T) {
 	cases := map[string]struct {
 		contentLength int
-		parallelism   int
+		Parallelism   int
 		expected      []string
 	}{
-		"contentLength: 5, parallelism: 0": {contentLength: 5, parallelism: 0, expected: []string{"bytes=0-4"}},
-		"contentLength: 5, parallelism: 1": {contentLength: 5, parallelism: 1, expected: []string{"bytes=0-4"}},
-		"contentLength: 5, parallelism: 2": {contentLength: 5, parallelism: 2, expected: []string{"bytes=0-1", "bytes=2-4"}},
-		"contentLength: 5, parallelism: 3": {contentLength: 5, parallelism: 3, expected: []string{"bytes=0-0", "bytes=1-1", "bytes=2-4"}},
-		"contentLength: 5, parallelism: 4": {contentLength: 5, parallelism: 4, expected: []string{"bytes=0-0", "bytes=1-1", "bytes=2-2", "bytes=3-4"}},
-		"contentLength: 5, parallelism: 5": {contentLength: 5, parallelism: 5, expected: []string{"bytes=0-0", "bytes=1-1", "bytes=2-2", "bytes=3-3", "bytes=4-4"}},
-		"contentLength: 5, parallelism: 6": {contentLength: 5, parallelism: 6, expected: []string{"bytes=0-0", "bytes=1-1", "bytes=2-2", "bytes=3-3", "bytes=4-4"}},
+		"contentLength: 5, Parallelism: 0": {contentLength: 5, Parallelism: 0, expected: []string{"bytes=0-4"}},
+		"contentLength: 5, Parallelism: 1": {contentLength: 5, Parallelism: 1, expected: []string{"bytes=0-4"}},
+		"contentLength: 5, Parallelism: 2": {contentLength: 5, Parallelism: 2, expected: []string{"bytes=0-1", "bytes=2-4"}},
+		"contentLength: 5, Parallelism: 3": {contentLength: 5, Parallelism: 3, expected: []string{"bytes=0-0", "bytes=1-1", "bytes=2-4"}},
+		"contentLength: 5, Parallelism: 4": {contentLength: 5, Parallelism: 4, expected: []string{"bytes=0-0", "bytes=1-1", "bytes=2-2", "bytes=3-4"}},
+		"contentLength: 5, Parallelism: 5": {contentLength: 5, Parallelism: 5, expected: []string{"bytes=0-0", "bytes=1-1", "bytes=2-2", "bytes=3-3", "bytes=4-4"}},
+		"contentLength: 5, Parallelism: 6": {contentLength: 5, Parallelism: 6, expected: []string{"bytes=0-0", "bytes=1-1", "bytes=2-2", "bytes=3-3", "bytes=4-4"}},
 	}
 
 	for n, c := range cases {
@@ -130,10 +101,10 @@ func TestMain_toRangeStrings(t *testing.T) {
 			t.Parallel()
 
 			contentLength := c.contentLength
-			parallelism := c.parallelism
+			Parallelism := c.Parallelism
 			expected := c.expected
 
-			actual, err := toRangeStrings(contentLength, parallelism)
+			actual, err := toRangeStrings(contentLength, Parallelism)
 			if err != nil {
 				t.Fatalf("err %s", err)
 			}

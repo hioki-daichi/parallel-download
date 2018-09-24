@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,6 +16,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/hioki-daichi/parallel-download/opt"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -27,6 +27,13 @@ var (
 var cleanFns []func()
 
 func main() {
+	err := execute(os.Args[1:], os.Stdout)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func execute(args []string, w io.Writer) error {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -35,13 +42,14 @@ func main() {
 
 	setupCloseHandler()
 
-	opts, url := parse(os.Args[1:]...)
+	opts, url := opt.Parse(args...)
 
-	d := newDownloader(os.Stdout, url, opts)
+	d := newDownloader(w, url, opts)
 	err := d.download(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }
 
 // setupCloseHandler handles Ctrl+C
@@ -58,28 +66,6 @@ func setupCloseHandler() {
 	}()
 }
 
-// parse parses command line options
-func parse(args ...string) (*options, string) {
-	flg := flag.NewFlagSet("parallel-download", flag.ExitOnError)
-
-	parallelism := flg.Int("p", 8, "parallelism")
-	output := flg.String("o", "", "output")
-
-	flg.Parse(args)
-
-	url := flg.Arg(0)
-
-	return &options{
-		parallelism: *parallelism,
-		output:      *output,
-	}, url
-}
-
-type options struct {
-	parallelism int
-	output      string
-}
-
 type downloader struct {
 	outStream   io.Writer
 	url         string
@@ -87,12 +73,12 @@ type downloader struct {
 	output      string
 }
 
-func newDownloader(w io.Writer, url string, opts *options) *downloader {
+func newDownloader(w io.Writer, url string, opts *opt.Options) *downloader {
 	return &downloader{
 		outStream:   w,
 		url:         url,
-		parallelism: opts.parallelism,
-		output:      opts.output,
+		parallelism: opts.Parallelism,
+		output:      opts.Output,
 	}
 }
 
