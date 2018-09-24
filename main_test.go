@@ -7,8 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -29,6 +27,8 @@ func TestMain_parse(t *testing.T) {
 	for n, c := range cases {
 		c := c
 		t.Run(n, func(t *testing.T) {
+			t.Parallel()
+
 			args := c.args
 			expectedOpts := c.expectedOpts
 			expectedURL := c.expectedURL
@@ -41,22 +41,6 @@ func TestMain_parse(t *testing.T) {
 				t.Errorf(`unexpected url: expected: "%s" actual: "%s"`, expectedURL, url)
 			}
 		})
-	}
-}
-
-func TestMain_download(t *testing.T) {
-	ts, cleanup := newTestServer(t)
-	defer cleanup()
-
-	dir, err := ioutil.TempDir("", "parallel-download")
-	if err != nil {
-		t.Fatalf("err %s", err)
-	}
-	defer os.Remove(dir)
-
-	err = newDownloader(ioutil.Discard, ts.URL, &options{parallelism: 8, output: filepath.Join(dir, "foo.png")}).download(context.Background())
-	if err != nil {
-		t.Fatalf("err %s", err)
 	}
 }
 
@@ -91,6 +75,8 @@ func TestMain_genFilename(t *testing.T) {
 }
 
 func TestMain_genFilename_ParseError(t *testing.T) {
+	t.Parallel()
+
 	expected := `parse %: invalid URL escape "%"`
 	d := newDownloader(ioutil.Discard, "%", &options{parallelism: 8, output: ""})
 	_, err := d.genFilename()
@@ -101,6 +87,8 @@ func TestMain_genFilename_ParseError(t *testing.T) {
 }
 
 func TestMain_genFilename_IsNotExist(t *testing.T) {
+	t.Parallel()
+
 	expected := errExist
 
 	d := newDownloader(ioutil.Discard, "http://example.com/main_test.go", &options{parallelism: 8, output: ""})
@@ -111,8 +99,10 @@ func TestMain_genFilename_IsNotExist(t *testing.T) {
 }
 
 func TestMain_doRangeRequest_ParseError(t *testing.T) {
+	t.Parallel()
+
 	expected := `parse %: invalid URL escape "%"`
-	_, err := newDownloader(ioutil.Discard, "%", &options{parallelism: 8, output: ""}).doRangeRequest("bytes=0-99")
+	_, err := newDownloader(ioutil.Discard, "%", &options{parallelism: 8, output: ""}).doRangeRequest(context.Background(), "bytes=0-99")
 	actual := err.Error()
 	if actual != expected {
 		t.Errorf(`unexpected : expected: "%s" actual: "%s"`, expected, actual)
@@ -154,6 +144,7 @@ func TestMain_toRangeStrings(t *testing.T) {
 	}
 }
 
+//
 func newTestServer(t *testing.T) (*httptest.Server, func()) {
 	t.Helper()
 
