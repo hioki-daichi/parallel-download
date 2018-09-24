@@ -1,3 +1,5 @@
+//usr/bin/env go run $0 $@ ; exit
+
 package main
 
 import (
@@ -89,7 +91,7 @@ func genBody(req *http.Request) (string, error) {
 func parse() *options {
 	flg := flag.NewFlagSet("test", flag.ExitOnError)
 	port := flg.Int("port", 8080, "port")
-	path := flg.String("f", "./testdata/foo.png", "path")
+	path := flg.String("f", "./downloading/testdata/foo.png", "path")
 	failureProbability := flg.Int("failureProbability", 0, "probability of failure")
 	flg.Parse(os.Args[1:])
 	addr := ":" + strconv.Itoa(*port)
