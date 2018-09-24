@@ -78,7 +78,7 @@ func (d *downloader) download(ctx context.Context) error {
 		return err
 	}
 
-	rangeStrings, err := toRangeStrings(int(resp.ContentLength), d.parallelism)
+	rangeStrings, err := generateFormattedRangeHeaders(int(resp.ContentLength), d.parallelism)
 	if err != nil {
 		return err
 	}
@@ -112,6 +112,7 @@ func (d *downloader) download(ctx context.Context) error {
 	return nil
 }
 
+// If output is specified, it will be used, otherwise use the one generated from URL.
 func (d *downloader) genFilename() (string, error) {
 	if d.output != "" {
 		return d.output, nil
@@ -119,6 +120,7 @@ func (d *downloader) genFilename() (string, error) {
 
 	_, filename := path.Split(d.url.Path)
 
+	// Inspired by the --default-page option of wget
 	if filename == "" {
 		filename = "index.html"
 	}
@@ -211,10 +213,8 @@ func (d *downloader) doRangeRequest(ctx context.Context, rangeString string) (*h
 	return resp, nil
 }
 
-func toRangeStrings(contentLength int, parallelism int) ([]string, error) {
-	rangeStructs := make([]rangeStruct, 0)
-
-	if parallelism == 0 {
+func generateFormattedRangeHeaders(contentLength int, parallelism int) ([]string, error) {
+	if parallelism < 1 {
 		parallelism = 1
 	}
 
@@ -222,32 +222,26 @@ func toRangeStrings(contentLength int, parallelism int) ([]string, error) {
 		parallelism = contentLength
 	}
 
-	length := contentLength / parallelism
+	chunkLen := contentLength / parallelism
+	rem := contentLength % parallelism
 
-	i := 0
+	ss := make([]string, 0)
+
+	cntr := 0
 	for n := parallelism; n > 0; n-- {
-		first := i
-		i += length
-		last := i - 1
-		rangeStructs = append(rangeStructs, rangeStruct{first: first, last: last})
+		min := cntr
+		max := cntr + chunkLen - 1
+
+		if n == 1 && rem != 0 {
+			max += rem
+		}
+
+		ss = append(ss, fmt.Sprintf("bytes=%d-%d", min, max))
+
+		cntr += chunkLen
 	}
 
-	if rem := contentLength % parallelism; rem != 0 {
-		rangeStructs[len(rangeStructs)-1].last += rem
-	}
-
-	rangeStrings := make([]string, 0)
-
-	for _, rangeStruct := range rangeStructs {
-		rangeStrings = append(rangeStrings, fmt.Sprintf("bytes=%d-%d", rangeStruct.first, rangeStruct.last))
-	}
-
-	return rangeStrings, nil
-}
-
-type rangeStruct struct {
-	first int
-	last  int
+	return ss, nil
 }
 
 func concatChunks(dst *os.File, chunks map[int]string) error {
