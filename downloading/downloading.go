@@ -23,6 +23,7 @@ import (
 var (
 	errAcceptRangesHeaderNotFound          = errors.New("Accept-Ranges header not found")
 	errAcceptRangesHeaderSupportsBytesOnly = errors.New("Accept-Ranges header supports bytes only")
+	errNoContent                           = errors.New("no content")
 )
 
 // Downloader has the information for the download.
@@ -50,10 +51,7 @@ func (d *Downloader) Download(ctx context.Context) error {
 		return err
 	}
 
-	formattedRangeHeaders, err := d.genFormattedRangeHeaders(contentLength)
-	if err != nil {
-		return err
-	}
+	formattedRangeHeaders := d.genFormattedRangeHeaders(contentLength)
 
 	dir, cleanFn, err := createWorkDir()
 	if err != nil {
@@ -118,10 +116,16 @@ func (d *Downloader) validateHeaderAndGetContentLength() (int, error) {
 		return 0, errAcceptRangesHeaderSupportsBytesOnly
 	}
 
-	return int(resp.ContentLength), nil
+	contentLength := int(resp.ContentLength)
+
+	if contentLength < 1 {
+		return 0, errNoContent
+	}
+
+	return contentLength, nil
 }
 
-func (d *Downloader) genFormattedRangeHeaders(contentLength int) ([]string, error) {
+func (d *Downloader) genFormattedRangeHeaders(contentLength int) []string {
 	parallelism := d.parallelism
 
 	if parallelism < 1 {
@@ -151,7 +155,7 @@ func (d *Downloader) genFormattedRangeHeaders(contentLength int) ([]string, erro
 		cntr += chunkContentLength
 	}
 
-	return ss, nil
+	return ss
 }
 
 func (d *Downloader) downloadChunkFile(ctx context.Context, i int, formattedRangeHeader string, ch chan<- map[int]string, errCh chan<- error, dir string) {
