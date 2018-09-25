@@ -24,7 +24,7 @@ func Parse(args ...string) (*Options, error) {
 	flg := flag.NewFlagSet("parallel-download", flag.ExitOnError)
 
 	parallelism := flg.Int("p", 8, "parallelism")
-	output := flg.String("o", "", "output")
+	output := flg.String("o", "", "output file")
 
 	flg.Parse(args)
 
