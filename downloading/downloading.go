@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/hioki-daichi/parallel-download/interruptor"
 	"github.com/hioki-daichi/parallel-download/opt"
 	"golang.org/x/sync/errgroup"
@@ -93,7 +94,7 @@ func (d *Downloader) Download(ctx context.Context) error {
 	}
 
 	fmt.Fprintln(d.outStream, "create destination tempfile")
-	tempFile, err := os.Create(filepath.Join(tempDir, "tempfile"))
+	tempFile, err := os.Create(filepath.Join(tempDir, genUUID()))
 	if err != nil {
 		return err
 	}
@@ -208,7 +209,7 @@ func (d *Downloader) downloadChunkFile(ctx context.Context, i int, formattedRang
 		return
 	}
 
-	tmp, err := os.Create(path.Join(dir, fmt.Sprintf("%02d", i)))
+	tmp, err := os.Create(path.Join(dir, genUUID()))
 	if err != nil {
 		errCh <- err
 		return
@@ -235,4 +236,12 @@ func createTempDir() (string, func(), error) {
 	cleanFn := func() { os.RemoveAll(dir) }
 	interruptor.RegisterCleanFunction(cleanFn)
 	return dir, cleanFn, nil
+}
+
+func genUUID() string {
+	u, err := uuid.NewRandom()
+	if err != nil {
+		panic(err)
+	}
+	return u.String()
 }
