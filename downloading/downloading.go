@@ -92,11 +92,14 @@ func (d *Downloader) Download(ctx context.Context) error {
 		return err
 	}
 
+	fmt.Fprintln(d.outStream, "create destination tempfile")
 	tempFile, err := os.Create(filepath.Join(tempDir, "tempfile"))
 	if err != nil {
 		return err
 	}
+	fmt.Fprintf(d.outStream, "created: %q\n", tempFile.Name())
 
+	fmt.Fprintln(d.outStream, "concat downloaded files to destination tempfile")
 	for i := 0; i < len(filenames); i++ {
 		src, err := os.Open(filenames[i])
 		if err != nil {
@@ -109,23 +112,27 @@ func (d *Downloader) Download(ctx context.Context) error {
 		}
 	}
 
+	fmt.Fprintf(d.outStream, "rename destination tempfile to %q\n", d.output)
 	err = os.Rename(tempFile.Name(), d.output)
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(d.outStream, "%q saved\n", d.output)
+	fmt.Fprintf(d.outStream, "completed: %q\n", d.output)
 
 	return nil
 }
 
 func (d *Downloader) validateHeaderAndGetContentLength() (int, error) {
+	fmt.Fprintf(d.outStream, "start HEAD request to get Content-Length\n")
+
 	resp, err := http.Head(d.url.String())
 	if err != nil {
 		return 0, err
 	}
 
 	acceptRangesHeader := resp.Header.Get("Accept-Ranges")
+	fmt.Fprintf(d.outStream, "got: Accept-Ranges: %s\n", acceptRangesHeader)
 	if acceptRangesHeader == "" {
 		return 0, errAcceptRangesHeaderNotFound
 	}
@@ -135,6 +142,8 @@ func (d *Downloader) validateHeaderAndGetContentLength() (int, error) {
 	}
 
 	contentLength := int(resp.ContentLength)
+
+	fmt.Fprintf(d.outStream, "got: Content-Length: %d\n", contentLength)
 
 	if contentLength < 1 {
 		return 0, errNoContent
@@ -185,13 +194,14 @@ func (d *Downloader) downloadChunkFile(ctx context.Context, i int, formattedRang
 
 	req.Header.Set("Range", formattedRangeHeader)
 
-	fmt.Fprintf(d.outStream, "Start requesting %q ...\n", formattedRangeHeader)
+	fmt.Fprintf(d.outStream, "start GET request with header: \"Range: %s\"\n", formattedRangeHeader)
 
 	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
 	if err != nil {
 		errCh <- err
 		return
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusPartialContent {
 		errCh <- fmt.Errorf("unexpected response: status code: %d", resp.StatusCode)
@@ -210,9 +220,7 @@ func (d *Downloader) downloadChunkFile(ctx context.Context, i int, formattedRang
 		return
 	}
 
-	fmt.Fprintf(d.outStream, "Download chunked file %q\n", tmp.Name())
-
-	resp.Body.Close()
+	fmt.Fprintf(d.outStream, "downloaded: %q\n", tmp.Name())
 
 	ch <- map[int]string{i: tmp.Name()}
 

@@ -27,7 +27,7 @@ func setup(exitFn func()) {
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-ch
-		fmt.Println("\r- Ctrl+C pressed in Terminal")
+		fmt.Println("\rCtrl+C pressed in Terminal")
 		for _, f := range cleanFns {
 			f()
 		}
