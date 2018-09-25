@@ -54,7 +54,7 @@ func (d *Downloader) Download(ctx context.Context) error {
 
 	formattedRangeHeaders := d.genFormattedRangeHeaders(contentLength)
 
-	dir, cleanFn, err := createWorkDir()
+	tempDir, cleanFn, err := createTempDir()
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func (d *Downloader) Download(ctx context.Context) error {
 	filenameCh := make(chan map[int]string)
 	errCh := make(chan error)
 	for i, frh := range formattedRangeHeaders {
-		go d.downloadChunkFile(ctx, i, frh, filenameCh, errCh, dir)
+		go d.downloadChunkFile(ctx, i, frh, filenameCh, errCh, tempDir)
 	}
 
 	filenames := map[int]string{}
@@ -92,7 +92,7 @@ func (d *Downloader) Download(ctx context.Context) error {
 		return err
 	}
 
-	tempFile, err := os.Create(filepath.Join(dir, "tempfile"))
+	tempFile, err := os.Create(filepath.Join(tempDir, "tempfile"))
 	if err != nil {
 		return err
 	}
@@ -219,7 +219,7 @@ func (d *Downloader) downloadChunkFile(ctx context.Context, i int, formattedRang
 	return
 }
 
-func createWorkDir() (string, func(), error) {
+func createTempDir() (string, func(), error) {
 	dir, err := ioutil.TempDir("", "parallel-download")
 	if err != nil {
 		return "", nil, err
