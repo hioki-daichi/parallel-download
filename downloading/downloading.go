@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"sync"
 
 	"github.com/hioki-daichi/parallel-download/interruptor"
@@ -91,7 +92,24 @@ func (d *Downloader) Download(ctx context.Context) error {
 		return err
 	}
 
-	err = d.concat(filenames)
+	tempFile, err := os.Create(filepath.Join(dir, "tempfile"))
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < len(filenames); i++ {
+		src, err := os.Open(filenames[i])
+		if err != nil {
+			return err
+		}
+
+		_, err = io.Copy(tempFile, src)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = os.Rename(tempFile.Name(), d.output)
 	if err != nil {
 		return err
 	}
@@ -199,32 +217,6 @@ func (d *Downloader) downloadChunkFile(ctx context.Context, i int, formattedRang
 	ch <- map[int]string{i: tmp.Name()}
 
 	return
-}
-
-func (d *Downloader) concat(filenames map[int]string) error {
-	dst, err := os.OpenFile(d.output, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer dst.Close()
-
-	for i := 0; i < len(filenames); i++ {
-		filename := filenames[i]
-		src, err := os.Open(filename)
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(dst, src)
-		if err != nil {
-			return err
-		}
-		err = src.Close()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func createWorkDir() (string, func(), error) {
