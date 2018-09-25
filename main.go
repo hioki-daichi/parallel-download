@@ -24,7 +24,7 @@ func execute(w io.Writer, args []string) error {
 	defer cancel()
 
 	interruptor.RegisterCleanFunction(cancel)
-	interruptor.Setup()
+	interruptor.Setup(w)
 
 	opts, err := opt.Parse(args...)
 	if err != nil {

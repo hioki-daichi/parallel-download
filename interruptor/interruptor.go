@@ -5,6 +5,7 @@ package interruptor
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,16 +19,16 @@ func RegisterCleanFunction(f func()) {
 }
 
 // Setup setups interrupt handler.
-func Setup() {
-	setup(func() { os.Exit(0) })
+func Setup(w io.Writer) {
+	setup(w, func() { os.Exit(0) })
 }
 
-func setup(exitFn func()) {
+func setup(w io.Writer, exitFn func()) {
 	ch := make(chan os.Signal, 2)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-ch
-		fmt.Println("\rCtrl+C pressed in Terminal")
+		fmt.Fprintln(w, "\rCtrl+C pressed in Terminal")
 		for _, f := range cleanFns {
 			f()
 		}

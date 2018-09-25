@@ -1,6 +1,7 @@
 package interruptor
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -22,7 +23,7 @@ func TestInterruptor_setup(t *testing.T) {
 		t.Fatalf("err %s", err)
 	}
 	doneCh := make(chan struct{})
-	setup(func() { doneCh <- struct{}{} })
+	setup(ioutil.Discard, func() { doneCh <- struct{}{} })
 	proc.Signal(os.Interrupt)
 	<-doneCh
 }
