@@ -7,7 +7,6 @@ import (
 	"errors"
 	"flag"
 	"net/url"
-	"os"
 	"path"
 )
 
@@ -16,7 +15,7 @@ var errExist = errors.New("file already exists")
 // Options has the options required for parallel-download.
 type Options struct {
 	Parallelism int
-	DstFile     *os.File
+	Output      string
 	URL         *url.URL
 }
 
@@ -45,14 +44,9 @@ func Parse(args ...string) (*Options, error) {
 		*output = filename
 	}
 
-	fp, err := os.OpenFile(*output, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Options{
 		Parallelism: *parallelism,
-		DstFile:     fp,
+		Output:      *output,
 		URL:         u,
 	}, nil
 }

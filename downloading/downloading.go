@@ -31,7 +31,7 @@ type Downloader struct {
 	outStream   io.Writer
 	url         *url.URL
 	parallelism int
-	dstFile     *os.File
+	output      string
 }
 
 // NewDownloader generates Downloader based on Options.
@@ -40,7 +40,7 @@ func NewDownloader(w io.Writer, opts *opt.Options) *Downloader {
 		outStream:   w,
 		url:         opts.URL,
 		parallelism: opts.Parallelism,
-		dstFile:     opts.DstFile,
+		output:      opts.Output,
 	}
 }
 
@@ -96,7 +96,7 @@ func (d *Downloader) Download(ctx context.Context) error {
 		return err
 	}
 
-	fmt.Fprintf(d.outStream, "%q saved\n", d.dstFile.Name())
+	fmt.Fprintf(d.outStream, "%q saved\n", d.output)
 
 	return nil
 }
@@ -202,13 +202,19 @@ func (d *Downloader) downloadChunkFile(ctx context.Context, i int, formattedRang
 }
 
 func (d *Downloader) concat(filenames map[int]string) error {
+	dst, err := os.OpenFile(d.output, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+
 	for i := 0; i < len(filenames); i++ {
 		filename := filenames[i]
 		src, err := os.Open(filename)
 		if err != nil {
 			return err
 		}
-		_, err = io.Copy(d.dstFile, src)
+		_, err = io.Copy(dst, src)
 		if err != nil {
 			return err
 		}
@@ -217,8 +223,6 @@ func (d *Downloader) concat(filenames map[int]string) error {
 			return err
 		}
 	}
-
-	d.dstFile.Close()
 
 	return nil
 }

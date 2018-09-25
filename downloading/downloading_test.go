@@ -40,13 +40,16 @@ func TestDownloading_Download_Success(t *testing.T) {
 			parallelism := c.parallelism
 			currentTestdataName = c.currentTestdataName
 
-			fp, clean := createDstFile(t)
-			defer clean()
+			output := "output.txt"
 
 			ts, clean := newTestServer(t, normalHandler)
 			defer clean()
 
-			err := newDownloader(t, fp, ts, parallelism).Download(context.Background())
+			err := newDownloader(t, output, ts, parallelism).Download(context.Background())
+			if err != nil {
+				t.Fatalf("err %s", err)
+			}
+			err = os.Remove(output)
 			if err != nil {
 				t.Fatalf("err %s", err)
 			}
@@ -60,13 +63,12 @@ func TestDownloading_Download_NoContent(t *testing.T) {
 
 	currentTestdataName = "empty.txt"
 
-	fp, clean := createDstFile(t)
-	defer clean()
+	output := "output.txt"
 
 	ts, clean := newTestServer(t, normalHandler)
 	defer clean()
 
-	actual := newDownloader(t, fp, ts, 1).Download(context.Background())
+	actual := newDownloader(t, output, ts, 1).Download(context.Background())
 	if actual != expected {
 		t.Errorf(`unexpected error: expected: "%s" actual: "%s"`, expected, actual)
 	}
@@ -75,13 +77,12 @@ func TestDownloading_Download_NoContent(t *testing.T) {
 func TestDownloading_Download_AcceptRangesHeaderNotFound(t *testing.T) {
 	expected := errAcceptRangesHeaderNotFound
 
-	fp, clean := createDstFile(t)
-	defer clean()
+	output := "output.txt"
 
 	ts, clean := newTestServer(t, func(t *testing.T, w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "") })
 	defer clean()
 
-	actual := newDownloader(t, fp, ts, 8).Download(context.Background())
+	actual := newDownloader(t, output, ts, 8).Download(context.Background())
 	if actual != expected {
 		t.Errorf(`unexpected error: expected: "%s" actual: "%s"`, expected, actual)
 	}
@@ -90,8 +91,7 @@ func TestDownloading_Download_AcceptRangesHeaderNotFound(t *testing.T) {
 func TestDownloading_Download_AcceptRangesHeaderSupportsBytesOnly(t *testing.T) {
 	expected := errAcceptRangesHeaderSupportsBytesOnly
 
-	fp, clean := createDstFile(t)
-	defer clean()
+	output := "output.txt"
 
 	ts, clean := newTestServer(t, func(t *testing.T, w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Accept-Ranges", "none")
@@ -99,7 +99,7 @@ func TestDownloading_Download_AcceptRangesHeaderSupportsBytesOnly(t *testing.T) 
 	})
 	defer clean()
 
-	actual := newDownloader(t, fp, ts, 8).Download(context.Background())
+	actual := newDownloader(t, output, ts, 8).Download(context.Background())
 	if actual != expected {
 		t.Errorf(`unexpected error: expected: "%s" actual: "%s"`, expected, actual)
 	}
@@ -108,8 +108,7 @@ func TestDownloading_Download_AcceptRangesHeaderSupportsBytesOnly(t *testing.T) 
 func TestDownloading_Download_BadRequest(t *testing.T) {
 	expected := "unexpected response: status code: 400"
 
-	fp, clean := createDstFile(t)
-	defer clean()
+	output := "output.txt"
 
 	ts, clean := newTestServer(t, func(t *testing.T, w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Accept-Ranges", "bytes")
@@ -118,42 +117,10 @@ func TestDownloading_Download_BadRequest(t *testing.T) {
 	})
 	defer clean()
 
-	err := newDownloader(t, fp, ts, 8).Download(context.Background())
+	err := newDownloader(t, output, ts, 8).Download(context.Background())
 	if err == nil {
 		t.Fatalf("unexpectedly err is nil")
 	}
-	actual := err.Error()
-	if actual != expected {
-		t.Errorf(`unexpected error: expected: "%s" actual: "%s"`, expected, actual)
-	}
-}
-
-func TestDownloading_concat_NonExistentFilename(t *testing.T) {
-	expected := "open non-existent: no such file or directory"
-
-	ts, clean := newTestServer(t, func(t *testing.T, w http.ResponseWriter, r *http.Request) {})
-	defer clean()
-
-	d := NewDownloader(ioutil.Discard, &opt.Options{Parallelism: 1, DstFile: nil, URL: mustParseRequestURI(t, ts.URL)})
-
-	err := d.concat(map[int]string{0: "non-existent"})
-
-	actual := err.Error()
-	if actual != expected {
-		t.Errorf(`unexpected error: expected: "%s" actual: "%s"`, expected, actual)
-	}
-}
-
-func TestDownloading_concat_DstFileError(t *testing.T) {
-	expected := "invalid argument"
-
-	ts, clean := newTestServer(t, func(t *testing.T, w http.ResponseWriter, r *http.Request) {})
-	defer clean()
-
-	d := NewDownloader(ioutil.Discard, &opt.Options{Parallelism: 1, DstFile: nil, URL: mustParseRequestURI(t, ts.URL)})
-
-	err := d.concat(map[int]string{0: "testdata/a.txt", 1: "testdata/b.txt"})
-
 	actual := err.Error()
 	if actual != expected {
 		t.Errorf(`unexpected error: expected: "%s" actual: "%s"`, expected, actual)
@@ -209,18 +176,10 @@ func normalHandler(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, body)
 }
 
-func createDstFile(t *testing.T) (*os.File, func()) {
-	fp, err := ioutil.TempFile("", "parallel-download")
-	if err != nil {
-		t.Fatalf("err %s", err)
-	}
-	return fp, func() { os.Remove(fp.Name()) }
-}
-
-func newDownloader(t *testing.T, fp *os.File, ts *httptest.Server, parallelism int) *Downloader {
+func newDownloader(t *testing.T, output string, ts *httptest.Server, parallelism int) *Downloader {
 	opts := &opt.Options{
 		Parallelism: parallelism,
-		DstFile:     fp,
+		Output:      output,
 		URL:         mustParseRequestURI(t, ts.URL),
 	}
 
