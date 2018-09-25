@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -40,16 +41,13 @@ func TestDownloading_Download_Success(t *testing.T) {
 			parallelism := c.parallelism
 			currentTestdataName = c.currentTestdataName
 
-			output := "output.txt"
+			output, clean := createTempOutput(t)
+			defer clean()
 
 			ts, clean := newTestServer(t, normalHandler)
 			defer clean()
 
 			err := newDownloader(t, output, ts, parallelism).Download(context.Background())
-			if err != nil {
-				t.Fatalf("err %s", err)
-			}
-			err = os.Remove(output)
 			if err != nil {
 				t.Fatalf("err %s", err)
 			}
@@ -63,7 +61,8 @@ func TestDownloading_Download_NoContent(t *testing.T) {
 
 	currentTestdataName = "empty.txt"
 
-	output := "output.txt"
+	output, clean := createTempOutput(t)
+	defer clean()
 
 	ts, clean := newTestServer(t, normalHandler)
 	defer clean()
@@ -77,7 +76,8 @@ func TestDownloading_Download_NoContent(t *testing.T) {
 func TestDownloading_Download_AcceptRangesHeaderNotFound(t *testing.T) {
 	expected := errAcceptRangesHeaderNotFound
 
-	output := "output.txt"
+	output, clean := createTempOutput(t)
+	defer clean()
 
 	ts, clean := newTestServer(t, func(t *testing.T, w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "") })
 	defer clean()
@@ -91,7 +91,8 @@ func TestDownloading_Download_AcceptRangesHeaderNotFound(t *testing.T) {
 func TestDownloading_Download_AcceptRangesHeaderSupportsBytesOnly(t *testing.T) {
 	expected := errAcceptRangesHeaderSupportsBytesOnly
 
-	output := "output.txt"
+	output, clean := createTempOutput(t)
+	defer clean()
 
 	ts, clean := newTestServer(t, func(t *testing.T, w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Accept-Ranges", "none")
@@ -108,7 +109,8 @@ func TestDownloading_Download_AcceptRangesHeaderSupportsBytesOnly(t *testing.T) 
 func TestDownloading_Download_BadRequest(t *testing.T) {
 	expected := "unexpected response: status code: 400"
 
-	output := "output.txt"
+	output, clean := createTempOutput(t)
+	defer clean()
 
 	ts, clean := newTestServer(t, func(t *testing.T, w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Accept-Ranges", "bytes")
@@ -201,4 +203,15 @@ func readTestdata(filename string) string {
 		panic(err)
 	}
 	return string(b)
+}
+
+func createTempOutput(t *testing.T) (string, func()) {
+	t.Helper()
+
+	dir, err := ioutil.TempDir("", "parallel-download")
+	if err != nil {
+		panic(err)
+	}
+
+	return filepath.Join(dir, "output.txt"), func() { os.RemoveAll(dir) }
 }
