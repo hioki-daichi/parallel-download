@@ -24,6 +24,7 @@ func init() {
 }
 
 func main() {
+	printBootMessage()
 	setContents(opts.path)
 	http.HandleFunc("/foo.png", handler)
 	http.ListenAndServe(opts.addr, nil)
@@ -111,4 +112,12 @@ func setContents(path string) {
 		panic(err)
 	}
 	contents = string(b)
+}
+
+func printBootMessage() {
+	usage := `Endpoint:
+GET /foo.png # Get a gopher image
+
+=> starting on http://localhost:8080`
+	fmt.Println(usage)
 }
