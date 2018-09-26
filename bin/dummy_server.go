@@ -3,10 +3,10 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -15,109 +15,61 @@ import (
 	"time"
 )
 
-var contents string
-
-var opts = parse()
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 func main() {
-	printBootMessage()
-	setContents(opts.path)
-	http.HandleFunc("/foo.png", handler)
-	http.ListenAndServe(opts.addr, nil)
-}
+	rand.Seed(time.Now().UnixNano())
 
-func handler(w http.ResponseWriter, req *http.Request) {
-	time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
-
-	w.Header().Set("Accept-Ranges", "bytes")
-	body, err := genBody(req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, err.Error())
-		return
-	}
-	if req.Method == "GET" && rand.Intn(100) < opts.failureProbability {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
-	w.WriteHeader(http.StatusPartialContent)
-	fmt.Fprint(w, body)
-}
-
-func genBody(req *http.Request) (string, error) {
-	// e.g. "bytes=0-99"
-	rangeHdr := req.Header.Get("Range")
-	if rangeHdr == "" {
-		return contents, nil
-	}
-
-	// e.g. []string{"bytes", "0-99"}
-	eqlSplitVals := strings.Split(rangeHdr, "=")
-	if eqlSplitVals[0] != "bytes" {
-		return "", errors.New(`only "bytes" is accepted`)
-	}
-
-	// e.g. []string{"0", "99"}
-	c := strings.Split(eqlSplitVals[1], "-")
-
-	// e.g. 0
-	start, err := strconv.Atoi(c[0])
-	if err != nil {
-		return "", err
-	}
-
-	// e.g. 99
-	end, err := strconv.Atoi(c[1])
-	if err != nil {
-		return "", err
-	}
-
-	// e.g. "Range: bytes=1-0"
-	if start > end {
-		return "", errors.New("invalid range")
-	}
-
-	l := len(contents)
-	if end > l {
-		end = l
-	}
-
-	return contents[start : end+1], nil
-}
-
-func parse() *options {
 	flg := flag.NewFlagSet("test", flag.ExitOnError)
+
 	port := flg.Int("port", 8080, "port")
-	path := flg.String("f", "./downloading/testdata/foo.png", "path")
-	failureProbability := flg.Int("failureProbability", 0, "probability of failure")
+	failureRate := flg.Int("failure-rate", 0, "failure rate")
+
 	flg.Parse(os.Args[1:])
-	addr := ":" + strconv.Itoa(*port)
-	return &options{addr: addr, path: *path, failureProbability: *failureProbability}
-}
 
-type options struct {
-	addr               string
-	path               string
-	failureProbability int
-}
+	fmt.Printf("=> starting with a failure rate of %d%% on http://localhost:%d\n", *failureRate, *port)
+	fmt.Println(`================================================================================
+THIS IS A DUMMY SERVER THAT CAN PARTIALLY RETURN IMAGE DATA !!
+================================================================================`)
+	fmt.Printf("Usage:\n")
+	flg.PrintDefaults()
+	fmt.Printf("Endpoint:\n  GET /foo.png # Get a gopher image\n")
 
-func setContents(path string) {
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		panic(err)
+	contents := func() string {
+		b, err := ioutil.ReadFile("./downloading/testdata/foo.png")
+		if err != nil {
+			panic(err)
+		}
+		return string(b)
+	}()
+
+	handler := func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Accept-Ranges", "bytes")
+
+		var body string
+		var statusCode int
+		if req.Method == "GET" && rand.Intn(100) < *failureRate {
+			body = "Internal Server Error"
+			statusCode = http.StatusInternalServerError
+		} else {
+			body = func(req *http.Request) string {
+				rangeHeader := req.Header.Get("Range") // e.g. "bytes=0-99"
+				if rangeHeader == "" {
+					return contents
+				}
+				c := strings.Split(strings.Split(rangeHeader, "=")[1], "-")
+				min, _ := strconv.Atoi(c[0])
+				max, _ := strconv.Atoi(c[1])
+				return contents[min : max+1]
+			}(req)
+			statusCode = http.StatusPartialContent
+		}
+
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(body)))
+		w.WriteHeader(statusCode)
+		fmt.Fprint(w, body)
+
+		log.Printf("%s %s %d %s\n", req.Method, req.RequestURI, statusCode, req.Header.Get("Range"))
 	}
-	contents = string(b)
-}
 
-func printBootMessage() {
-	usage := `Endpoint:
-GET /foo.png # Get a gopher image
-
-=> starting on http://localhost:8080`
-	fmt.Println(usage)
+	http.HandleFunc("/foo.png", handler)
+	http.ListenAndServe(fmt.Sprintf(":%d", *port), nil)
 }
