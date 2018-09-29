@@ -21,11 +21,8 @@ func main() {
 func execute(w io.Writer, args []string) error {
 	ctx := context.Background()
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	terminator.Listen(w)
-	terminator.CleanFunc(cancel)
+	ctx, clean := terminator.Listen(ctx, w)
+	defer clean()
 
 	opts, err := opt.Parse(args...)
 	if err != nil {

@@ -1,6 +1,7 @@
 package terminator
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -23,7 +24,7 @@ func TestInterruptor_listen(t *testing.T) {
 		t.Fatalf("err %s", err)
 	}
 	doneCh := make(chan struct{})
-	listen(ioutil.Discard, func() { doneCh <- struct{}{} })
+	listen(context.Background(), ioutil.Discard, func() { doneCh <- struct{}{} })
 	proc.Signal(os.Interrupt)
 	<-doneCh
 }
