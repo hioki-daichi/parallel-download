@@ -147,6 +147,70 @@ func TestDownloading_Download_RenameError(t *testing.T) {
 	}
 }
 
+func TestDownloading_getContentLength_DoError(t *testing.T) {
+	expected := `Head A: unsupported protocol scheme ""`
+
+	ts, clean := newTestServer(t, noopHandler)
+	defer clean()
+
+	d := newDownloader(t, "path/to/output", ts, 2)
+
+	u, err := url.Parse("A")
+	if err != nil {
+		t.Fatalf("err %s", err)
+	}
+
+	d.url = u
+
+	_, err = d.getContentLength(context.Background())
+
+	actual := err.Error()
+	if actual != expected {
+		t.Errorf(`unexpected error: expected: "%s" actual: "%s"`, expected, actual)
+	}
+}
+
+func TestDownloading_partialDownload_osCreateError(t *testing.T) {
+	ts, clean := newTestServer(t, func(t *testing.T, w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusPartialContent)
+	})
+	defer clean()
+
+	_, err := newDownloader(t, "", ts, 2).partialDownload(context.Background(), "bytes=0-1", "non/existent/path")
+	if !regexp.MustCompile("no such file or directory").MatchString(err.Error()) {
+		t.Errorf("unexpectedly not matched: %s", err.Error())
+	}
+}
+
+func TestDownloading_concat_osCreateError(t *testing.T) {
+	ts, clean := newTestServer(t, noopHandler)
+	defer clean()
+
+	d := newDownloader(t, "", ts, 2)
+	_, err := d.concat(map[int]string{}, "non/existent/path")
+
+	if !regexp.MustCompile("no such file or directory").MatchString(err.Error()) {
+		t.Errorf("unexpectedly not matched: %s", err.Error())
+	}
+}
+
+func TestDownloading_concat_osOpenError(t *testing.T) {
+	ts, clean := newTestServer(t, noopHandler)
+	defer clean()
+
+	dir, err := ioutil.TempDir("", "parallel-download")
+	if err != nil {
+		t.Fatalf("err %s", err)
+	}
+	defer os.RemoveAll(dir)
+
+	_, err = newDownloader(t, "", ts, 2).concat(map[int]string{0: "non/existent/path"}, dir)
+
+	if !regexp.MustCompile("no such file or directory").MatchString(err.Error()) {
+		t.Errorf("unexpectedly not matched: %s", err.Error())
+	}
+}
+
 func newTestServer(t *testing.T, handler func(t *testing.T, w http.ResponseWriter, r *http.Request)) (*httptest.Server, func()) {
 	t.Helper()
 
@@ -160,6 +224,8 @@ func newTestServer(t *testing.T, handler func(t *testing.T, w http.ResponseWrite
 }
 
 func normalHandler(t *testing.T, w http.ResponseWriter, r *http.Request) {
+	t.Helper()
+
 	w.Header().Set("Accept-Ranges", "bytes")
 
 	rangeHdr := r.Header.Get("Range")
@@ -196,7 +262,11 @@ func normalHandler(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, body)
 }
 
+func noopHandler(t *testing.T, w http.ResponseWriter, r *http.Request) {}
+
 func newDownloader(t *testing.T, output string, ts *httptest.Server, parallelism int) *Downloader {
+	t.Helper()
+
 	opts := &opt.Options{
 		Parallelism: parallelism,
 		Output:      output,
@@ -209,10 +279,12 @@ func newDownloader(t *testing.T, output string, ts *httptest.Server, parallelism
 
 func mustParseRequestURI(t *testing.T, s string) *url.URL {
 	t.Helper()
+
 	u, err := url.ParseRequestURI(s)
 	if err != nil {
 		t.Fatalf("err %s", err)
 	}
+
 	return u
 }
 
