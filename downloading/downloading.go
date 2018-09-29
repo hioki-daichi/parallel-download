@@ -67,35 +67,8 @@ func (d *Downloader) Download(ctx context.Context) error {
 	}
 	defer clean()
 
-	filenameCh := make(chan map[int]string)
-	errCh := make(chan error)
-	for i, frh := range rangeHeaders {
-		go d.downloadChunkFile(ctx, i, frh, filenameCh, errCh, tempDir)
-	}
-
-	filenames := map[int]string{}
-
-	eg, ctx := errgroup.WithContext(ctx)
-	var mu sync.Mutex
-	for i := 0; i < len(rangeHeaders); i++ {
-		eg.Go(func() error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case m := <-filenameCh:
-				for k, v := range m {
-					mu.Lock()
-					filenames[k] = v
-					mu.Unlock()
-				}
-				return nil
-			case err := <-errCh:
-				return err
-			}
-		})
-	}
-
-	if err := eg.Wait(); err != nil {
+	filenames, err := d.parallelDownload(ctx, rangeHeaders, tempDir)
+	if err != nil {
 		return err
 	}
 
@@ -212,6 +185,44 @@ func (d *Downloader) toRangeHeaders(contentLength int) []string {
 	}
 
 	return rangeHeaders
+}
+
+// parallelDownload downloads in parallel for each specified rangeHeaders and saves it in the specified dir.
+func (d *Downloader) parallelDownload(ctx context.Context, rangeHeaders []string, dir string) (map[int]string, error) {
+	filenames := map[int]string{}
+
+	filenameCh := make(chan map[int]string)
+	errCh := make(chan error)
+
+	for i, rangeHeader := range rangeHeaders {
+		go d.downloadChunkFile(ctx, i, rangeHeader, filenameCh, errCh, dir)
+	}
+
+	eg, ctx := errgroup.WithContext(ctx)
+	var mu sync.Mutex
+	for i := 0; i < len(rangeHeaders); i++ {
+		eg.Go(func() error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case m := <-filenameCh:
+				for k, v := range m {
+					mu.Lock()
+					filenames[k] = v
+					mu.Unlock()
+				}
+				return nil
+			case err := <-errCh:
+				return err
+			}
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+
+	return filenames, nil
 }
 
 func (d *Downloader) downloadChunkFile(ctx context.Context, i int, rangeHeader string, ch chan<- map[int]string, errCh chan<- error, dir string) {
