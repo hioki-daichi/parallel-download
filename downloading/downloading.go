@@ -75,7 +75,7 @@ func (d *Downloader) Download(ctx context.Context) error {
 		eg.Go(func() error {
 			select {
 			case <-ctx.Done():
-				return nil
+				return ctx.Err()
 			case m := <-filenameCh:
 				for k, v := range m {
 					mu.Lock()
