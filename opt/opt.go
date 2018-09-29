@@ -25,9 +25,9 @@ type Options struct {
 func Parse(args ...string) (*Options, error) {
 	flg := flag.NewFlagSet("parallel-download", flag.ExitOnError)
 
-	parallelism := flg.Int("p", 8, "parallelism")
-	output := flg.String("o", "", "output file")
-	timeout := flg.Duration("t", 60*time.Second, "timeout")
+	parallelism := flg.Int("p", 8, "Download files in parallel according to the specified number.")
+	output := flg.String("o", "", "Save the downloaded file in the specified path. (Overwrite if duplicates.)")
+	timeout := flg.Duration("t", 30*time.Second, "Terminate when the specified value has elapsed since download started.")
 
 	flg.Parse(args)
 

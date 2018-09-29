@@ -7,11 +7,13 @@
 
 `parallel-download` is a command that can download the resources on the web in parallel.
 
-Parallelism can be specified with `-p`.
+Available options are below.
 
-Output file can be specified with `-o`.
-
-Timeout can be specified with `-t`.
+| Option | Description                                                                          |
+| ---    | ---                                                                                  |
+| `-p`   | Download files in parallel according to the specified number. (default 8)            |
+| `-o`   | Save the downloaded file in the specified path. (Overwrite if duplicates.)           |
+| `-t`   | Terminate when the specified value has elapsed since download started. (default 30s) |
 
 ## How to try parallel-download using a dummy server
 
