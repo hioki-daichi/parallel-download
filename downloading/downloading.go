@@ -5,6 +5,7 @@ package downloading
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -17,7 +18,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/hioki-daichi/parallel-download/opt"
 	"github.com/hioki-daichi/parallel-download/termination"
 	"golang.org/x/sync/errgroup"
@@ -251,7 +251,7 @@ func (d *Downloader) partialDownload(ctx context.Context, rangeHeader string, di
 		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	fp, err := os.Create(path.Join(dir, genUUID()))
+	fp, err := os.Create(path.Join(dir, randomHexStr()))
 	if err != nil {
 		return "", err
 	}
@@ -272,7 +272,7 @@ func (d *Downloader) partialDownload(ctx context.Context, rangeHeader string, di
 // and creates the concatenated file under the specified dir,
 // and returns the filename.
 func (d *Downloader) concat(filenames map[int]string, dir string) (string, error) {
-	fp, err := os.Create(filepath.Join(dir, genUUID()))
+	fp, err := os.Create(filepath.Join(dir, randomHexStr()))
 	if err != nil {
 		return "", err
 	}
@@ -297,10 +297,13 @@ func (d *Downloader) concat(filenames map[int]string, dir string) (string, error
 	return filename, nil
 }
 
-func genUUID() string {
-	u, err := uuid.NewRandom()
+// randomHexStr returns a random hex string of length 10.
+// 10 is a length which does not duplicate enough.
+func randomHexStr() string {
+	b := make([]byte, 5)
+	_, err := rand.Read(b)
 	if err != nil {
 		panic(err)
 	}
-	return u.String()
+	return fmt.Sprintf("%x", b)
 }

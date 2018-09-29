@@ -41,7 +41,7 @@ $ ./bin/dummy_server.go
   -port int
         Port on which the dummy server listens. (default 8080)
 --------------------------------------------------------------------------------
-2018/09/29 22:08:31 Server starting on http://localhost:8080
+2018/09/29 23:54:58 Server starting on http://localhost:8080
 ```
 
 ### 3. Execute
@@ -54,13 +54,13 @@ start HEAD request to get Content-Length
 got: Accept-Ranges: bytes
 got: Content-Length: 169406
 start GET request with header: "Range: bytes=0-56467"
-start GET request with header: "Range: bytes=56468-112935"
 start GET request with header: "Range: bytes=112936-169405"
-downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download216516726/0eb6dd9b-f28f-4455-95fb-0b0a0745d7d3"
-downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download216516726/dcb31d4e-f6e0-4e77-92c2-2e665b186b5c"
-downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download216516726/0a96a807-4727-4a28-a7c0-317c26a1b7f6"
-concatenate downloaded files to tempfile: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download216516726/4cacdf81-be30-4328-97f0-5bd4a4054367"
-rename "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download216516726/4cacdf81-be30-4328-97f0-5bd4a4054367" to "bar.png"
+start GET request with header: "Range: bytes=56468-112935"
+downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download526418857/229d2cd782"
+downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download526418857/ad17ecaad7"
+downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download526418857/2de6dbbc0e"
+concatenate downloaded files to tempfile: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download526418857/c3cec4953b"
+rename "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download526418857/c3cec4953b" to "bar.png"
 completed: "bar.png"
 ```
 
