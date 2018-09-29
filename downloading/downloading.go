@@ -72,28 +72,14 @@ func (d *Downloader) Download(ctx context.Context) error {
 		return err
 	}
 
-	fmt.Fprintln(d.outStream, "create destination tempfile")
-	tempFile, err := os.Create(filepath.Join(tempDir, genUUID()))
+	filename, err := d.concat(filenames, tempDir)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(d.outStream, "created: %q\n", tempFile.Name())
 
-	fmt.Fprintln(d.outStream, "concat downloaded files to destination tempfile")
-	for i := 0; i < len(filenames); i++ {
-		src, err := os.Open(filenames[i])
-		if err != nil {
-			return err
-		}
+	fmt.Fprintf(d.outStream, "rename %q to %q\n", filename, d.output)
 
-		_, err = io.Copy(tempFile, src)
-		if err != nil {
-			return err
-		}
-	}
-
-	fmt.Fprintf(d.outStream, "rename destination tempfile to %q\n", d.output)
-	err = os.Rename(tempFile.Name(), d.output)
+	err = os.Rename(filename, d.output)
 	if err != nil {
 		return err
 	}
@@ -276,6 +262,35 @@ func (d *Downloader) partialDownload(ctx context.Context, rangeHeader string, di
 	filename := fp.Name()
 
 	fmt.Fprintf(d.outStream, "downloaded: %q\n", filename)
+
+	return filename, nil
+}
+
+// concat concatenates the files in order based on the mapping of the specified filenames,
+// and creates the concatenated file under the specified dir,
+// and returns the filename.
+func (d *Downloader) concat(filenames map[int]string, dir string) (string, error) {
+	fp, err := os.Create(filepath.Join(dir, genUUID()))
+	if err != nil {
+		return "", err
+	}
+	defer fp.Close()
+
+	filename := fp.Name()
+
+	fmt.Fprintf(d.outStream, "concatenate downloaded files to tempfile: %q\n", filename)
+
+	for i := 0; i < len(filenames); i++ {
+		src, err := os.Open(filenames[i])
+		if err != nil {
+			return "", err
+		}
+
+		_, err = io.Copy(fp, src)
+		if err != nil {
+			return "", err
+		}
+	}
 
 	return filename, nil
 }

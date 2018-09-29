@@ -41,7 +41,7 @@ $ ./bin/dummy_server.go
   -port int
         Port on which the dummy server listens. (default 8080)
 --------------------------------------------------------------------------------
-2018/09/29 16:08:31 Server starting on http://localhost:8080
+2018/09/29 22:08:31 Server starting on http://localhost:8080
 ```
 
 ### 3. Execute
@@ -49,20 +49,18 @@ $ ./bin/dummy_server.go
 Execute the command with specifying the Gopher image endpoint of the dummy server (and some options).
 
 ```
-$ go run main.go -p=3 -t=10ms -o=bar.png http://localhost:8080/foo.png
+$ go run main.go -p=3 -t=3s -o=bar.png http://localhost:8080/foo.png
 start HEAD request to get Content-Length
 got: Accept-Ranges: bytes
 got: Content-Length: 169406
 start GET request with header: "Range: bytes=0-56467"
 start GET request with header: "Range: bytes=56468-112935"
 start GET request with header: "Range: bytes=112936-169405"
-downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download207726192/998018e7-769d-4ee9-b504-a7895146b791"
-downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download207726192/a59f9202-20d2-46d6-8172-d4df32c5483e"
-downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download207726192/941dd4cf-6a8b-4039-9373-f433f583e2df"
-create destination tempfile
-created: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download207726192/19c6b4b3-ecc7-45a8-9bff-afd341a46f6a"
-concat downloaded files to destination tempfile
-rename destination tempfile to "bar.png"
+downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download216516726/0eb6dd9b-f28f-4455-95fb-0b0a0745d7d3"
+downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download216516726/dcb31d4e-f6e0-4e77-92c2-2e665b186b5c"
+downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download216516726/0a96a807-4727-4a28-a7c0-317c26a1b7f6"
+concatenate downloaded files to tempfile: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download216516726/4cacdf81-be30-4328-97f0-5bd4a4054367"
+rename "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download216516726/4cacdf81-be30-4328-97f0-5bd4a4054367" to "bar.png"
 completed: "bar.png"
 ```
 
