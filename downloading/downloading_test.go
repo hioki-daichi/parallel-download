@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hioki-daichi/parallel-download/opt"
 )
@@ -183,6 +184,7 @@ func newDownloader(t *testing.T, output string, ts *httptest.Server, parallelism
 		Parallelism: parallelism,
 		Output:      output,
 		URL:         mustParseRequestURI(t, ts.URL),
+		Timeout:     60 * time.Second,
 	}
 
 	return NewDownloader(ioutil.Discard, opts)

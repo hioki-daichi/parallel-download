@@ -8,6 +8,7 @@ import (
 	"flag"
 	"net/url"
 	"path"
+	"time"
 )
 
 var errExist = errors.New("file already exists")
@@ -17,6 +18,7 @@ type Options struct {
 	Parallelism int
 	Output      string
 	URL         *url.URL
+	Timeout     time.Duration
 }
 
 // Parse parses args and returns Options.
@@ -25,6 +27,7 @@ func Parse(args ...string) (*Options, error) {
 
 	parallelism := flg.Int("p", 8, "parallelism")
 	output := flg.String("o", "", "output file")
+	timeout := flg.Duration("t", 60*time.Second, "timeout")
 
 	flg.Parse(args)
 
@@ -48,5 +51,6 @@ func Parse(args ...string) (*Options, error) {
 		Parallelism: *parallelism,
 		Output:      *output,
 		URL:         u,
+		Timeout:     *timeout,
 	}, nil
 }

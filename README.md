@@ -11,6 +11,8 @@ Parallelism can be specified with `-p`.
 
 Output file can be specified with `-o`.
 
+Timeout can be specified with `-t`.
+
 ## How to try parallel-download using a dummy server
 
 Start a dummy server as folllows,

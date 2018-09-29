@@ -15,6 +15,7 @@ import (
 	"path"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/hioki-daichi/parallel-download/interruptor"
@@ -34,6 +35,7 @@ type Downloader struct {
 	url         *url.URL
 	parallelism int
 	output      string
+	timeout     time.Duration
 }
 
 // NewDownloader generates Downloader based on Options.
@@ -43,11 +45,15 @@ func NewDownloader(w io.Writer, opts *opt.Options) *Downloader {
 		url:         opts.URL,
 		parallelism: opts.Parallelism,
 		output:      opts.Output,
+		timeout:     opts.Timeout,
 	}
 }
 
 // Download performs parallel download.
 func (d *Downloader) Download(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, d.timeout)
+	defer cancel()
+
 	contentLength, err := d.validateHeaderAndGetContentLength(ctx)
 	if err != nil {
 		return err
