@@ -226,11 +226,26 @@ func (d *Downloader) parallelDownload(ctx context.Context, rangeHeaders []string
 	return filenames, nil
 }
 
+// partialDownloadAndSendToChannel performs partialDownload and sends it to the appropriate channel according to the result.
 func (d *Downloader) partialDownloadAndSendToChannel(ctx context.Context, i int, rangeHeader string, filenameCh chan<- map[int]string, errCh chan<- error, dir string) {
-	req, err := http.NewRequest("GET", d.url.String(), nil)
+	filename, err := d.partialDownload(ctx, rangeHeader, dir)
 	if err != nil {
 		errCh <- err
 		return
+	}
+
+	filenameCh <- map[int]string{i: filename}
+
+	return
+}
+
+// partialDownload sends a partial request with the specified rangeHeader,
+// and saves the response body in the file under the specified dir,
+// and returns the filename.
+func (d *Downloader) partialDownload(ctx context.Context, rangeHeader string, dir string) (string, error) {
+	req, err := http.NewRequest("GET", d.url.String(), nil)
+	if err != nil {
+		return "", err
 	}
 	req = req.WithContext(ctx)
 
@@ -240,35 +255,29 @@ func (d *Downloader) partialDownloadAndSendToChannel(ctx context.Context, i int,
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		errCh <- err
-		return
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusPartialContent {
-		errCh <- fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-		return
+		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	tmp, err := os.Create(path.Join(dir, genUUID()))
+	fp, err := os.Create(path.Join(dir, genUUID()))
 	if err != nil {
-		errCh <- err
-		return
+		return "", err
 	}
 
-	_, err = io.Copy(tmp, resp.Body)
+	_, err = io.Copy(fp, resp.Body)
 	if err != nil {
-		errCh <- err
-		return
+		return "", err
 	}
 
-	filename := tmp.Name()
+	filename := fp.Name()
 
 	fmt.Fprintf(d.outStream, "downloaded: %q\n", filename)
 
-	filenameCh <- map[int]string{i: filename}
-
-	return
+	return filename, nil
 }
 
 func createTempDir() (string, func(), error) {
