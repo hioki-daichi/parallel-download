@@ -15,9 +15,15 @@ Available options are below.
 | `-o`   | Save the downloaded file in the specified path. (Overwrite if duplicates.)           |
 | `-t`   | Terminate when the specified value has elapsed since download started. (default 30s) |
 
-## How to try parallel-download using a dummy server
+## How to develop
 
-Start a dummy server as folllows,
+### 1. Install packages
+
+Execute `$ dep ensure` to install dependent packages.
+
+### 2. Start a dummy server
+
+Execute `$ ./bin/dummy_server.go` to start a dummy server that returns a Gopher image.
 
 ```shell
 $ ./bin/dummy_server.go
@@ -34,35 +40,26 @@ Endpoint:
   GET /foo.png # Get a gopher image
 ```
 
-Send a GET /foo.png request from another terminal.
+### 3. Execute
+
+Execute the command with specifying the Gopher image endpoint of the dummy server (and some options).
 
 ```shell
-$ make build
-$ ./parallel-download -p 8 http://localhost:8080/foo.png
+$ go run main.go -p=3 -t=10ms -o=bar.png http://localhost:8080/foo.png
 start HEAD request to get Content-Length
 got: Accept-Ranges: bytes
 got: Content-Length: 169406
-start GET request with header: "Range: bytes=0-21174"
-start GET request with header: "Range: bytes=148225-169405"
-start GET request with header: "Range: bytes=63525-84699"
-start GET request with header: "Range: bytes=21175-42349"
-start GET request with header: "Range: bytes=105875-127049"
-start GET request with header: "Range: bytes=42350-63524"
-start GET request with header: "Range: bytes=84700-105874"
-start GET request with header: "Range: bytes=127050-148224"
-downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download876853028/990e6f45-0706-42d0-a794-3ec57f57de30"
-downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download876853028/d2f907b1-d7fc-4d03-906e-0af5ec73b307"
-downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download876853028/a06561a7-f6fd-401f-a639-ab634eafdb53"
-downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download876853028/ed257040-5f58-4122-bcec-b651b726441e"
-downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download876853028/5bd78896-ca15-49be-9d26-8b39dc3789fe"
-downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download876853028/eb2d8908-c887-40f1-a255-bfb4a5c55a37"
-downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download876853028/737c5741-a0c5-476f-96af-50575b4c7cb3"
-downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download876853028/727f4504-cd5d-4b28-b5e4-7ffc967f032c"
+start GET request with header: "Range: bytes=0-56467"
+start GET request with header: "Range: bytes=56468-112935"
+start GET request with header: "Range: bytes=112936-169405"
+downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download207726192/998018e7-769d-4ee9-b504-a7895146b791"
+downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download207726192/a59f9202-20d2-46d6-8172-d4df32c5483e"
+downloaded: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download207726192/941dd4cf-6a8b-4039-9373-f433f583e2df"
 create destination tempfile
-created: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download876853028/28e546a1-39ea-423d-a5fb-0b9c7776d94e"
+created: "/var/folders/f8/1n0bk4tj4ll6clyj868k_nqh0000gn/T/parallel-download207726192/19c6b4b3-ecc7-45a8-9bff-afd341a46f6a"
 concat downloaded files to destination tempfile
-rename destination tempfile to "foo.png"
-completed: "foo.png"
+rename destination tempfile to "bar.png"
+completed: "bar.png"
 ```
 
 ## How to run the test
