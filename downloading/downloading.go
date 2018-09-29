@@ -127,7 +127,12 @@ func (d *Downloader) Download(ctx context.Context) error {
 func (d *Downloader) validateHeaderAndGetContentLength() (int, error) {
 	fmt.Fprintf(d.outStream, "start HEAD request to get Content-Length\n")
 
-	resp, err := http.Head(d.url.String())
+	req, err := http.NewRequest("HEAD", d.url.String(), nil)
+	if err != nil {
+		return 0, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return 0, err
 	}
