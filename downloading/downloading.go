@@ -111,8 +111,9 @@ func (d *Downloader) getContentLength(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	req = req.WithContext(ctx)
 
-	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return 0, err
 	}
@@ -195,7 +196,7 @@ func (d *Downloader) parallelDownload(ctx context.Context, rangeHeaders []string
 	errCh := make(chan error)
 
 	for i, rangeHeader := range rangeHeaders {
-		go d.downloadChunkFile(ctx, i, rangeHeader, filenameCh, errCh, dir)
+		go d.partialDownload(ctx, i, rangeHeader, filenameCh, errCh, dir)
 	}
 
 	eg, ctx := errgroup.WithContext(ctx)
@@ -225,18 +226,19 @@ func (d *Downloader) parallelDownload(ctx context.Context, rangeHeaders []string
 	return filenames, nil
 }
 
-func (d *Downloader) downloadChunkFile(ctx context.Context, i int, rangeHeader string, ch chan<- map[int]string, errCh chan<- error, dir string) {
+func (d *Downloader) partialDownload(ctx context.Context, i int, rangeHeader string, filenameCh chan<- map[int]string, errCh chan<- error, dir string) {
 	req, err := http.NewRequest("GET", d.url.String(), nil)
 	if err != nil {
 		errCh <- err
 		return
 	}
+	req = req.WithContext(ctx)
 
 	req.Header.Set("Range", rangeHeader)
 
 	fmt.Fprintf(d.outStream, "start GET request with header: \"Range: %s\"\n", rangeHeader)
 
-	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		errCh <- err
 		return
@@ -260,9 +262,11 @@ func (d *Downloader) downloadChunkFile(ctx context.Context, i int, rangeHeader s
 		return
 	}
 
-	fmt.Fprintf(d.outStream, "downloaded: %q\n", tmp.Name())
+	filename := tmp.Name()
 
-	ch <- map[int]string{i: tmp.Name()}
+	fmt.Fprintf(d.outStream, "downloaded: %q\n", filename)
+
+	filenameCh <- map[int]string{i: filename}
 
 	return
 }
