@@ -25,26 +25,30 @@ Execute `$ dep ensure` to install dependent packages.
 
 Execute `$ ./bin/dummy_server.go` to start a dummy server that returns a Gopher image.
 
-```shell
+```
 $ ./bin/dummy_server.go
-=> starting with a failure rate of 0% on http://localhost:8080
-================================================================================
-THIS IS A DUMMY SERVER THAT CAN PARTIALLY RETURN IMAGE DATA !!
-================================================================================
-Usage:
+--------------------------------------------------------------------------------
+# Endpoint
+
+  GET /foo.png // Get a gopher image
+
+# Command-line options**
+
   -failure-rate int
-        failure rate
+        Probability to return InternalServerError.
+  -max-delay duration
+        Maximum time delay randomly applied from receiving a request until returning a response. (default 1s)
   -port int
-        port (default 8080)
-Endpoint:
-  GET /foo.png # Get a gopher image
+        Port on which the dummy server listens. (default 8080)
+--------------------------------------------------------------------------------
+2018/09/29 16:08:31 Server starting on http://localhost:8080
 ```
 
 ### 3. Execute
 
 Execute the command with specifying the Gopher image endpoint of the dummy server (and some options).
 
-```shell
+```
 $ go run main.go -p=3 -t=10ms -o=bar.png http://localhost:8080/foo.png
 start HEAD request to get Content-Length
 got: Accept-Ranges: bytes

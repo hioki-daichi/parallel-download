@@ -26,13 +26,16 @@ func main() {
 
 	flg.Parse(os.Args[1:])
 
-	fmt.Printf("=> starting with a failure rate of %d%% on http://localhost:%d\n", *failureRate, *port)
-	fmt.Println(`================================================================================
-THIS IS A DUMMY SERVER THAT CAN PARTIALLY RETURN IMAGE DATA !!
-================================================================================`)
-	fmt.Printf("Usage:\n")
+	fmt.Print(`--------------------------------------------------------------------------------
+# Endpoint
+
+  GET /foo.png // Get a gopher image
+
+# Command-line options**
+
+`)
 	flg.PrintDefaults()
-	fmt.Printf("Endpoint:\n  GET /foo.png # Get a gopher image\n")
+	fmt.Println("--------------------------------------------------------------------------------")
 
 	contents := func() string {
 		b, err := ioutil.ReadFile("./downloading/testdata/foo.png")
@@ -76,6 +79,13 @@ THIS IS A DUMMY SERVER THAT CAN PARTIALLY RETURN IMAGE DATA !!
 	}
 
 	http.HandleFunc("/foo.png", handler)
+
+	if *failureRate > 0 {
+		log.Printf("Server starting with a failure rate of %d%% on http://localhost:%d\n", *failureRate, *port)
+	} else {
+		log.Printf("Server starting on http://localhost:%d\n", *port)
+	}
+
 	err := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil)
 	if err != nil {
 		log.Fatal(err)
