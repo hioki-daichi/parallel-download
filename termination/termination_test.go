@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func TestInterruptor_Listen(t *testing.T) {
+func TestTermination_Listen(t *testing.T) {
 	CleanFunc(func() {})
 
 	doneCh := make(chan struct{})
