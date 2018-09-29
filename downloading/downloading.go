@@ -54,7 +54,7 @@ func (d *Downloader) Download(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, d.timeout)
 	defer cancel()
 
-	contentLength, err := d.validateHeaderAndGetContentLength(ctx)
+	contentLength, err := d.getContentLength(ctx)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (d *Downloader) Download(ctx context.Context) error {
 	return nil
 }
 
-func (d *Downloader) validateHeaderAndGetContentLength(ctx context.Context) (int, error) {
+func (d *Downloader) getContentLength(ctx context.Context) (int, error) {
 	fmt.Fprintf(d.outStream, "start HEAD request to get Content-Length\n")
 
 	req, err := http.NewRequest("HEAD", d.url.String(), nil)
@@ -148,7 +148,15 @@ func (d *Downloader) validateHeaderAndGetContentLength(ctx context.Context) (int
 		return 0, err
 	}
 
-	return d.getContentLength(resp)
+	contentLength := int(resp.ContentLength)
+
+	fmt.Fprintf(d.outStream, "got: Content-Length: %d\n", contentLength)
+
+	if contentLength < 1 {
+		return 0, errNoContent
+	}
+
+	return contentLength, nil
 }
 
 func (d *Downloader) validateHeader(resp *http.Response) error {
@@ -165,18 +173,6 @@ func (d *Downloader) validateHeader(resp *http.Response) error {
 	}
 
 	return nil
-}
-
-func (d *Downloader) getContentLength(resp *http.Response) (int, error) {
-	contentLength := int(resp.ContentLength)
-
-	fmt.Fprintf(d.outStream, "got: Content-Length: %d\n", contentLength)
-
-	if contentLength < 1 {
-		return 0, errNoContent
-	}
-
-	return contentLength, nil
 }
 
 func (d *Downloader) genFormattedRangeHeaders(contentLength int) []string {
