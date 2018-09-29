@@ -143,16 +143,31 @@ func (d *Downloader) validateHeaderAndGetContentLength(ctx context.Context) (int
 		return 0, err
 	}
 
+	err = d.validateHeader(resp)
+	if err != nil {
+		return 0, err
+	}
+
+	return d.getContentLength(resp)
+}
+
+func (d *Downloader) validateHeader(resp *http.Response) error {
 	acceptRangesHeader := resp.Header.Get("Accept-Ranges")
+
 	fmt.Fprintf(d.outStream, "got: Accept-Ranges: %s\n", acceptRangesHeader)
+
 	if acceptRangesHeader == "" {
-		return 0, errResponseDoesNotIncludeAcceptRangesHeader
+		return errResponseDoesNotIncludeAcceptRangesHeader
 	}
 
 	if acceptRangesHeader != "bytes" {
-		return 0, errValueOfAcceptRangesHeaderIsNotBytes
+		return errValueOfAcceptRangesHeaderIsNotBytes
 	}
 
+	return nil
+}
+
+func (d *Downloader) getContentLength(resp *http.Response) (int, error) {
 	contentLength := int(resp.ContentLength)
 
 	fmt.Fprintf(d.outStream, "got: Content-Length: %d\n", contentLength)
