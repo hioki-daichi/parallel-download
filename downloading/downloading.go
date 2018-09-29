@@ -61,11 +61,11 @@ func (d *Downloader) Download(ctx context.Context) error {
 
 	rangeHeaders := d.toRangeHeaders(contentLength)
 
-	tempDir, cleanFn, err := createTempDir()
+	tempDir, clean, err := createTempDir()
 	if err != nil {
 		return err
 	}
-	defer cleanFn()
+	defer clean()
 
 	filenameCh := make(chan map[int]string)
 	errCh := make(chan error)
@@ -261,9 +261,9 @@ func createTempDir() (string, func(), error) {
 	if err != nil {
 		return "", nil, err
 	}
-	cleanFn := func() { os.RemoveAll(dir) }
-	terminator.CleanFunc(cleanFn)
-	return dir, cleanFn, nil
+	clean := func() { os.RemoveAll(dir) }
+	terminator.CleanFunc(clean)
+	return dir, clean, nil
 }
 
 func genUUID() string {
