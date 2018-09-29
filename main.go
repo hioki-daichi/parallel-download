@@ -23,8 +23,8 @@ func execute(w io.Writer, args []string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	interruptor.Setup(w)
-	interruptor.RegisterCleanFunction(cancel)
+	interruptor.Listen(w)
+	interruptor.CleanFunc(cancel)
 
 	opts, err := opt.Parse(args...)
 	if err != nil {

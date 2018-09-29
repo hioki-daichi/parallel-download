@@ -13,17 +13,17 @@ import (
 
 var cleanFns []func()
 
-// RegisterCleanFunction registers clean function.
-func RegisterCleanFunction(f func()) {
+// CleanFunc registers clean function.
+func CleanFunc(f func()) {
 	cleanFns = append(cleanFns, f)
 }
 
-// Setup setups interrupt handler.
-func Setup(w io.Writer) {
-	setup(w, func() { os.Exit(0) })
+// Listen listens signals.
+func Listen(w io.Writer) {
+	listen(w, func() { os.Exit(0) })
 }
 
-func setup(w io.Writer, exitFn func()) {
+func listen(w io.Writer, exitFn func()) {
 	ch := make(chan os.Signal, 2)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	go func() {

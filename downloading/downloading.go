@@ -245,7 +245,7 @@ func createTempDir() (string, func(), error) {
 		return "", nil, err
 	}
 	cleanFn := func() { os.RemoveAll(dir) }
-	interruptor.RegisterCleanFunction(cleanFn)
+	interruptor.CleanFunc(cleanFn)
 	return dir, cleanFn, nil
 }
 
