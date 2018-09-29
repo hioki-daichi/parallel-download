@@ -59,7 +59,7 @@ func (d *Downloader) Download(ctx context.Context) error {
 		return err
 	}
 
-	formattedRangeHeaders := d.genFormattedRangeHeaders(contentLength)
+	rangeHeaders := d.toRangeHeaders(contentLength)
 
 	tempDir, cleanFn, err := createTempDir()
 	if err != nil {
@@ -69,7 +69,7 @@ func (d *Downloader) Download(ctx context.Context) error {
 
 	filenameCh := make(chan map[int]string)
 	errCh := make(chan error)
-	for i, frh := range formattedRangeHeaders {
+	for i, frh := range rangeHeaders {
 		go d.downloadChunkFile(ctx, i, frh, filenameCh, errCh, tempDir)
 	}
 
@@ -77,7 +77,7 @@ func (d *Downloader) Download(ctx context.Context) error {
 
 	eg, ctx := errgroup.WithContext(ctx)
 	var mu sync.Mutex
-	for i := 0; i < len(formattedRangeHeaders); i++ {
+	for i := 0; i < len(rangeHeaders); i++ {
 		eg.Go(func() error {
 			select {
 			case <-ctx.Done():
@@ -130,6 +130,7 @@ func (d *Downloader) Download(ctx context.Context) error {
 	return nil
 }
 
+// getContentLength returns the value of Content-Length received by making a HEAD request.
 func (d *Downloader) getContentLength(ctx context.Context) (int, error) {
 	fmt.Fprintf(d.outStream, "start HEAD request to get Content-Length\n")
 
@@ -143,7 +144,7 @@ func (d *Downloader) getContentLength(ctx context.Context) (int, error) {
 		return 0, err
 	}
 
-	err = d.validateHeader(resp)
+	err = d.validateAcceptRangesHeader(resp)
 	if err != nil {
 		return 0, err
 	}
@@ -159,7 +160,10 @@ func (d *Downloader) getContentLength(ctx context.Context) (int, error) {
 	return contentLength, nil
 }
 
-func (d *Downloader) validateHeader(resp *http.Response) error {
+// validateAcceptRangesHeader validates the following.
+// - The presence of an Accept-Ranges header
+// - The value of the Accept-Ranges header is "bytes"
+func (d *Downloader) validateAcceptRangesHeader(resp *http.Response) error {
 	acceptRangesHeader := resp.Header.Get("Accept-Ranges")
 
 	fmt.Fprintf(d.outStream, "got: Accept-Ranges: %s\n", acceptRangesHeader)
@@ -175,49 +179,51 @@ func (d *Downloader) validateHeader(resp *http.Response) error {
 	return nil
 }
 
-func (d *Downloader) genFormattedRangeHeaders(contentLength int) []string {
+// toRangeHeaders converts the value of Content-Length to the value of Range header.
+func (d *Downloader) toRangeHeaders(contentLength int) []string {
 	parallelism := d.parallelism
 
+	// 1 <= parallelism <= Content-Length
 	if parallelism < 1 {
 		parallelism = 1
 	}
-
 	if contentLength < parallelism {
 		parallelism = contentLength
 	}
 
-	chunkContentLength := contentLength / parallelism
-	rem := contentLength % parallelism
+	unitLength := contentLength / parallelism
+	remainingLength := contentLength % parallelism
 
-	ss := make([]string, 0)
+	rangeHeaders := make([]string, 0)
 
 	cntr := 0
 	for n := parallelism; n > 0; n-- {
 		min := cntr
-		max := cntr + chunkContentLength - 1
+		max := cntr + unitLength - 1
 
-		if n == 1 && rem != 0 {
-			max += rem
+		// Add the remaining length to the last chunk
+		if n == 1 && remainingLength != 0 {
+			max += remainingLength
 		}
 
-		ss = append(ss, fmt.Sprintf("bytes=%d-%d", min, max))
+		rangeHeaders = append(rangeHeaders, fmt.Sprintf("bytes=%d-%d", min, max))
 
-		cntr += chunkContentLength
+		cntr += unitLength
 	}
 
-	return ss
+	return rangeHeaders
 }
 
-func (d *Downloader) downloadChunkFile(ctx context.Context, i int, formattedRangeHeader string, ch chan<- map[int]string, errCh chan<- error, dir string) {
+func (d *Downloader) downloadChunkFile(ctx context.Context, i int, rangeHeader string, ch chan<- map[int]string, errCh chan<- error, dir string) {
 	req, err := http.NewRequest("GET", d.url.String(), nil)
 	if err != nil {
 		errCh <- err
 		return
 	}
 
-	req.Header.Set("Range", formattedRangeHeader)
+	req.Header.Set("Range", rangeHeader)
 
-	fmt.Fprintf(d.outStream, "start GET request with header: \"Range: %s\"\n", formattedRangeHeader)
+	fmt.Fprintf(d.outStream, "start GET request with header: \"Range: %s\"\n", rangeHeader)
 
 	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
 	if err != nil {
