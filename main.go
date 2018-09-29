@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/hioki-daichi/parallel-download/downloading"
-	"github.com/hioki-daichi/parallel-download/interruptor"
 	"github.com/hioki-daichi/parallel-download/opt"
+	"github.com/hioki-daichi/parallel-download/terminator"
 )
 
 func main() {
@@ -20,11 +20,12 @@ func main() {
 
 func execute(w io.Writer, args []string) error {
 	ctx := context.Background()
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	interruptor.Listen(w)
-	interruptor.CleanFunc(cancel)
+	terminator.Listen(w)
+	terminator.CleanFunc(cancel)
 
 	opts, err := opt.Parse(args...)
 	if err != nil {

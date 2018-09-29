@@ -1,7 +1,7 @@
 /*
-Package interruptor deals with Ctrl+C interruption.
+Package terminator deals with Ctrl+C termination.
 */
-package interruptor
+package terminator
 
 import (
 	"fmt"

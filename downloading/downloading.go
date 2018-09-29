@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/hioki-daichi/parallel-download/interruptor"
 	"github.com/hioki-daichi/parallel-download/opt"
+	"github.com/hioki-daichi/parallel-download/terminator"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -245,7 +245,7 @@ func createTempDir() (string, func(), error) {
 		return "", nil, err
 	}
 	cleanFn := func() { os.RemoveAll(dir) }
-	interruptor.CleanFunc(cleanFn)
+	terminator.CleanFunc(cleanFn)
 	return dir, cleanFn, nil
 }
 

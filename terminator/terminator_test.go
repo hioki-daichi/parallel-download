@@ -1,4 +1,4 @@
-package interruptor
+package terminator
 
 import (
 	"io/ioutil"
