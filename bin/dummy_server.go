@@ -76,5 +76,8 @@ THIS IS A DUMMY SERVER THAT CAN PARTIALLY RETURN IMAGE DATA !!
 	}
 
 	http.HandleFunc("/foo.png", handler)
-	http.ListenAndServe(fmt.Sprintf(":%d", *port), nil)
+	err := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
