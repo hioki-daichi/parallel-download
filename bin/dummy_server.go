@@ -20,8 +20,9 @@ func main() {
 
 	flg := flag.NewFlagSet("test", flag.ExitOnError)
 
-	port := flg.Int("port", 8080, "port")
-	failureRate := flg.Int("failure-rate", 0, "failure rate")
+	port := flg.Int("port", 8080, "Port on which the dummy server listens.")
+	failureRate := flg.Int("failure-rate", 0, "Probability to return InternalServerError.")
+	maxDelay := flg.Duration("max-delay", time.Second, "Maximum time delay randomly applied from receiving a request until returning a response.")
 
 	flg.Parse(os.Args[1:])
 
@@ -42,6 +43,10 @@ THIS IS A DUMMY SERVER THAT CAN PARTIALLY RETURN IMAGE DATA !!
 	}()
 
 	handler := func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != "HEAD" {
+			time.Sleep(time.Duration(rand.Intn(int(*maxDelay))))
+		}
+
 		w.Header().Set("Accept-Ranges", "bytes")
 
 		var body string
