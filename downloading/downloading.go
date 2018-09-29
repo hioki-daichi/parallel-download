@@ -61,11 +61,13 @@ func (d *Downloader) Download(ctx context.Context) error {
 
 	rangeHeaders := d.toRangeHeaders(contentLength)
 
-	tempDir, clean, err := createTempDir()
+	tempDir, err := ioutil.TempDir("", "parallel-download")
 	if err != nil {
 		return err
 	}
+	clean := func() { os.RemoveAll(tempDir) }
 	defer clean()
+	termination.CleanFunc(clean)
 
 	filenames, err := d.parallelDownload(ctx, rangeHeaders, tempDir)
 	if err != nil {
@@ -293,16 +295,6 @@ func (d *Downloader) concat(filenames map[int]string, dir string) (string, error
 	}
 
 	return filename, nil
-}
-
-func createTempDir() (string, func(), error) {
-	dir, err := ioutil.TempDir("", "parallel-download")
-	if err != nil {
-		return "", nil, err
-	}
-	clean := func() { os.RemoveAll(dir) }
-	termination.CleanFunc(clean)
-	return dir, clean, nil
 }
 
 func genUUID() string {
