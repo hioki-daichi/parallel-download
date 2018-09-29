@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -127,6 +128,22 @@ func TestDownloading_Download_BadRequest(t *testing.T) {
 	actual := err.Error()
 	if actual != expected {
 		t.Errorf(`unexpected error: expected: "%s" actual: "%s"`, expected, actual)
+	}
+}
+
+func TestDownloading_Download_RenameError(t *testing.T) {
+	currentTestdataName = "foo.png"
+
+	ts, clean := newTestServer(t, normalHandler)
+	defer clean()
+
+	err := newDownloader(t, "/non/existent/path", ts, 1).Download(context.Background())
+	if err == nil {
+		t.Fatal("unexpectedly err is nil")
+	}
+
+	if !regexp.MustCompile("/non/existent/path: no such file or directory").MatchString(err.Error()) {
+		t.Errorf("unexpectedly not matched: %s", err.Error())
 	}
 }
 
