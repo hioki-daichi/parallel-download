@@ -196,7 +196,7 @@ func (d *Downloader) parallelDownload(ctx context.Context, rangeHeaders []string
 	errCh := make(chan error)
 
 	for i, rangeHeader := range rangeHeaders {
-		go d.partialDownload(ctx, i, rangeHeader, filenameCh, errCh, dir)
+		go d.partialDownloadAndSendToChannel(ctx, i, rangeHeader, filenameCh, errCh, dir)
 	}
 
 	eg, ctx := errgroup.WithContext(ctx)
@@ -226,7 +226,7 @@ func (d *Downloader) parallelDownload(ctx context.Context, rangeHeaders []string
 	return filenames, nil
 }
 
-func (d *Downloader) partialDownload(ctx context.Context, i int, rangeHeader string, filenameCh chan<- map[int]string, errCh chan<- error, dir string) {
+func (d *Downloader) partialDownloadAndSendToChannel(ctx context.Context, i int, rangeHeader string, filenameCh chan<- map[int]string, errCh chan<- error, dir string) {
 	req, err := http.NewRequest("GET", d.url.String(), nil)
 	if err != nil {
 		errCh <- err
