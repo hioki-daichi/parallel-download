@@ -75,7 +75,7 @@ func TestDownloading_Download_NoContent(t *testing.T) {
 }
 
 func TestDownloading_Download_AcceptRangesHeaderNotFound(t *testing.T) {
-	expected := errAcceptRangesHeaderNotFound
+	expected := errResponseDoesNotIncludeAcceptRangesHeader
 
 	output, clean := createTempOutput(t)
 	defer clean()
@@ -90,7 +90,7 @@ func TestDownloading_Download_AcceptRangesHeaderNotFound(t *testing.T) {
 }
 
 func TestDownloading_Download_AcceptRangesHeaderSupportsBytesOnly(t *testing.T) {
-	expected := errAcceptRangesHeaderSupportsBytesOnly
+	expected := errValueOfAcceptRangesHeaderIsNotBytes
 
 	output, clean := createTempOutput(t)
 	defer clean()

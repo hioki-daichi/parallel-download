@@ -24,9 +24,9 @@ import (
 )
 
 var (
-	errAcceptRangesHeaderNotFound          = errors.New("Accept-Ranges header not found")
-	errAcceptRangesHeaderSupportsBytesOnly = errors.New("Accept-Ranges header supports bytes only")
-	errNoContent                           = errors.New("no content")
+	errResponseDoesNotIncludeAcceptRangesHeader = errors.New("response does not include Accept-Ranges header")
+	errValueOfAcceptRangesHeaderIsNotBytes      = errors.New("the value of Accept-Ranges header is not bytes")
+	errNoContent                                = errors.New("no content")
 )
 
 // Downloader has the information for the download.
@@ -146,11 +146,11 @@ func (d *Downloader) validateHeaderAndGetContentLength(ctx context.Context) (int
 	acceptRangesHeader := resp.Header.Get("Accept-Ranges")
 	fmt.Fprintf(d.outStream, "got: Accept-Ranges: %s\n", acceptRangesHeader)
 	if acceptRangesHeader == "" {
-		return 0, errAcceptRangesHeaderNotFound
+		return 0, errResponseDoesNotIncludeAcceptRangesHeader
 	}
 
 	if acceptRangesHeader != "bytes" {
-		return 0, errAcceptRangesHeaderSupportsBytesOnly
+		return 0, errValueOfAcceptRangesHeaderIsNotBytes
 	}
 
 	contentLength := int(resp.ContentLength)
