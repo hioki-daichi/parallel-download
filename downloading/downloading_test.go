@@ -108,7 +108,7 @@ func TestDownloading_Download_AcceptRangesHeaderSupportsBytesOnly(t *testing.T) 
 }
 
 func TestDownloading_Download_BadRequest(t *testing.T) {
-	expected := "unexpected response: status code: 400"
+	expected := "unexpected status code: 400"
 
 	output, clean := createTempOutput(t)
 	defer clean()

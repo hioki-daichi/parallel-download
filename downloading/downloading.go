@@ -244,7 +244,7 @@ func (d *Downloader) downloadChunkFile(ctx context.Context, i int, rangeHeader s
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusPartialContent {
-		errCh <- fmt.Errorf("unexpected response: status code: %d", resp.StatusCode)
+		errCh <- fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 		return
 	}
 
