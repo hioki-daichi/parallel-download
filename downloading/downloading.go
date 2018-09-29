@@ -48,7 +48,7 @@ func NewDownloader(w io.Writer, opts *opt.Options) *Downloader {
 
 // Download performs parallel download.
 func (d *Downloader) Download(ctx context.Context) error {
-	contentLength, err := d.validateHeaderAndGetContentLength()
+	contentLength, err := d.validateHeaderAndGetContentLength(ctx)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func (d *Downloader) Download(ctx context.Context) error {
 	return nil
 }
 
-func (d *Downloader) validateHeaderAndGetContentLength() (int, error) {
+func (d *Downloader) validateHeaderAndGetContentLength(ctx context.Context) (int, error) {
 	fmt.Fprintf(d.outStream, "start HEAD request to get Content-Length\n")
 
 	req, err := http.NewRequest("HEAD", d.url.String(), nil)
@@ -132,7 +132,7 @@ func (d *Downloader) validateHeaderAndGetContentLength() (int, error) {
 		return 0, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return 0, err
 	}
