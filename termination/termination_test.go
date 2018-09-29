@@ -1,4 +1,4 @@
-package terminator
+package termination
 
 import (
 	"context"

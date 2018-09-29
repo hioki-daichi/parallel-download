@@ -1,7 +1,7 @@
 /*
-Package terminator deals with Ctrl+C termination.
+Package termination deals with Ctrl+C termination.
 */
-package terminator
+package termination
 
 import (
 	"context"

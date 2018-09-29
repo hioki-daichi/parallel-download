@@ -19,7 +19,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hioki-daichi/parallel-download/opt"
-	"github.com/hioki-daichi/parallel-download/terminator"
+	"github.com/hioki-daichi/parallel-download/termination"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -286,7 +286,7 @@ func createTempDir() (string, func(), error) {
 		return "", nil, err
 	}
 	clean := func() { os.RemoveAll(dir) }
-	terminator.CleanFunc(clean)
+	termination.CleanFunc(clean)
 	return dir, clean, nil
 }
 

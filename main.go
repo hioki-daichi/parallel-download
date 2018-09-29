@@ -8,7 +8,7 @@ import (
 
 	"github.com/hioki-daichi/parallel-download/downloading"
 	"github.com/hioki-daichi/parallel-download/opt"
-	"github.com/hioki-daichi/parallel-download/terminator"
+	"github.com/hioki-daichi/parallel-download/termination"
 )
 
 func main() {
@@ -21,7 +21,7 @@ func main() {
 func execute(w io.Writer, args []string) error {
 	ctx := context.Background()
 
-	ctx, clean := terminator.Listen(ctx, w)
+	ctx, clean := termination.Listen(ctx, w)
 	defer clean()
 
 	opts, err := opt.Parse(args...)
