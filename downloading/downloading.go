@@ -156,7 +156,7 @@ func (d *Downloader) toRangeHeaders(contentLength int) []string {
 	unitLength := contentLength / parallelism
 	remainingLength := contentLength % parallelism
 
-	rangeHeaders := make([]string, 0)
+	var rangeHeaders []string
 
 	cntr := 0
 	for n := parallelism; n > 0; n-- {
