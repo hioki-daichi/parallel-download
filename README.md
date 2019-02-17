@@ -17,11 +17,7 @@ Available options are below.
 
 ## How to develop
 
-### 1. Install packages
-
-Execute `$ dep ensure` to install dependent packages.
-
-### 2. Start a dummy server
+### 1. Start a dummy server
 
 Execute `$ ./bin/dummy_server.go` to start a dummy server that returns a Gopher image.
 
@@ -44,7 +40,7 @@ $ ./bin/dummy_server.go
 2018/09/29 23:54:58 Server starting on http://localhost:8080
 ```
 
-### 3. Execute
+### 2. Execute
 
 Execute the command with specifying the Gopher image endpoint of the dummy server (and some options).
 
