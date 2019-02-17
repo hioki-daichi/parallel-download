@@ -9,7 +9,6 @@ BINARY_NAME=parallel-download
 
 all: test build
 build:
-	dep ensure
 	$(GOBUILD) -o $(BINARY_NAME) -v
 test:
 	$(GOTEST) ./...
